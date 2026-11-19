@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en-ZA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Garden Route Green</title>
+<meta name="theme-color" content="#0f4a2d"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Garden Route Green">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Layout: brand bar on top, one working column, tab bar at the bottom. Forest green on green-tinted neutrals. */
+:root{--brand:#14613a;--brand-ink:#ffffff;--brand-soft:#e3efe7;--hdr:#0f4a2d;--hdr-ink:#ffffff;
+--bg:#f2f5f2;--desk:#dde5df;--surface:#ffffff;--line:#dce5de;--text:#16241c;--muted:#5f7066;
+--warn:#9a5d06;--warn-soft:#fbefd3;--bad:#b3261e;--bad-soft:#fbe6e3;
+--shadow:0 1px 2px rgba(15,40,25,.06),0 4px 14px rgba(15,40,25,.05);
+--font-display:'Bricolage Grotesque','Plus Jakarta Sans',system-ui,sans-serif;
+--font-body:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--brand:#52ad7b;--brand-ink:#08150d;--brand-soft:#17321f;--hdr:#12281d;--hdr-ink:#e9f3ed;
+--bg:#0c140f;--desk:#070c09;--surface:#141f18;--line:#24362b;--text:#e5efe8;--muted:#92a79b;--warn:#e5a847;--warn-soft:#3a2d12;--bad:#f08178;--bad-soft:#3b1c19;--shadow:0 1px 2px rgba(0,0,0,.4);color-scheme:dark}}
+:root[data-theme="dark"]{--brand:#52ad7b;--brand-ink:#08150d;--brand-soft:#17321f;--hdr:#12281d;--hdr-ink:#e9f3ed;
+--bg:#0c140f;--desk:#070c09;--surface:#141f18;--line:#24362b;--text:#e5efe8;--muted:#92a79b;--warn:#e5a847;--warn-soft:#3a2d12;--bad:#f08178;--bad-soft:#3b1c19;--shadow:0 1px 2px rgba(0,0,0,.4);color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font:14.5px/1.45 var(--font-body);background:var(--bg);color:var(--text);padding-bottom:84px;font-variant-numeric:tabular-nums}
+h1,h2,h3{font-family:var(--font-display);text-wrap:balance}
+.ic{width:20px;height:20px;flex:none;vertical-align:-4px}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+header{background:var(--hdr);color:var(--hdr-ink);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:5;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.brand{display:flex;align-items:center;gap:11px}
+.logo{width:38px;height:38px;border-radius:11px;background:#52ad7b;color:#08150d;display:grid;place-items:center}
+.logo .ic{width:22px;height:22px}
+header h1{font-size:18px;line-height:1.1;margin:0;font-weight:700;letter-spacing:.1px}
+header small{display:block;opacity:.72;font-size:12px;margin-top:2px}
+.iconbtn{background:rgba(255,255,255,.12);color:var(--hdr-ink);border:0;border-radius:10px;width:40px;height:40px;display:grid;place-items:center}
+.iconbtn:active{background:rgba(255,255,255,.25)}
+#banner{background:var(--warn-soft);color:var(--warn);padding:9px 16px;font-size:13px;display:none}
+main{padding:16px;max-width:780px;margin:0 auto}
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--line);display:flex;z-index:6;padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -4px 16px rgba(15,40,25,.06)}
+nav button{flex:1;border:0;background:none;padding:9px 2px 8px;font-size:11.5px;font-weight:600;color:var(--muted);position:relative;display:flex;flex-direction:column;align-items:center;gap:3px}
+nav button .ic{width:22px;height:22px}
+nav button.on{color:var(--brand)}
+nav button.on::before{content:"";position:absolute;top:0;left:30%;right:30%;height:3px;border-radius:0 0 3px 3px;background:var(--brand)}
+nav .bdg{position:absolute;top:3px;left:calc(50% + 6px);background:var(--bad);color:#fff;border-radius:9px;font-size:10px;font-weight:700;padding:1px 5px;min-width:16px;text-align:center}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px;box-shadow:var(--shadow)}
+.card h3{margin:0 0 6px;font-size:16px;font-weight:700}
+input,select,textarea{font:inherit;width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--text)}
+input::placeholder,textarea::placeholder{color:var(--muted);opacity:.8}
+label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:10px 0 4px}
+.search{margin-bottom:12px}
+.b{background:var(--brand);color:var(--brand-ink);border:0;border-radius:11px;padding:11px 15px;font-size:14px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:transform .08s}
+.b:active{transform:scale(.98)}
+.b .ic{width:18px;height:18px;vertical-align:0}
+.b.alt{background:var(--brand-soft);color:var(--brand)}
+.b.red{background:var(--bad-soft);color:var(--bad)}
+.b.sm{padding:7px 11px;font-size:13px;border-radius:9px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row>*{flex:1}
+.row>.nf{flex:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:left;display:flex;flex-direction:column;gap:2px;min-height:96px;font:inherit;color:inherit;box-shadow:var(--shadow);transition:transform .08s,border-color .15s}
+.tile:active{transform:scale(.98);border-color:var(--brand);background:var(--brand-soft)}
+.tile b{font-size:14.5px;line-height:1.25}
+.tile .tc{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.tile span{color:var(--brand);font-weight:800;font-size:16px;margin-top:auto;padding-top:6px}
+.tile small{color:var(--muted);font-size:12px}
+.tile small.low{color:var(--warn);font-weight:700}
+.tile small.out{color:var(--bad);font-weight:700}
+.catbar{display:flex;gap:7px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px;scrollbar-width:none}
+.catbar::-webkit-scrollbar{display:none}
+.catbar button{flex:none;border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:7px 14px;font-size:13px;font-weight:600;color:var(--text)}
+.catbar button.on{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+.line{display:grid;grid-template-columns:1fr auto;gap:6px 8px;padding:10px 0;border-bottom:1px solid var(--line);align-items:center}
+.line .ln{font-weight:700}
+.line .ctl{display:flex;gap:6px;align-items:center;grid-column:1/3}
+.line .ctl button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--text);display:grid;place-items:center;padding:0}
+.line .ctl button .ic{width:18px;height:18px;vertical-align:0}
+.line .ctl button.rm{color:var(--bad);margin-left:2px}
+.line .ctl input{width:64px;text-align:center}
+.line .ctl .pr{width:92px}
+.line .ctl b{margin-left:auto}
+.tot{display:flex;justify-content:space-between;align-items:baseline;font-size:15px;padding:12px 0}
+.tot b{font-family:var(--font-display);font-size:26px}
+.prow{display:flex;justify-content:space-between;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}
+.prow:last-child{border-bottom:0}
+.prow.st-low,.prow.st-soon{box-shadow:inset 3px 0 0 var(--warn);padding-left:11px}
+.prow.st-out{box-shadow:inset 3px 0 0 var(--bad);padding-left:11px}
+.sub{color:var(--muted);font-size:12.5px}
+.chip{display:inline-block;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700;background:var(--brand-soft);color:var(--brand)}
+.chip.low,.chip.soon{background:var(--warn-soft);color:var(--warn)}
+.chip.out,.chip.unpaid{background:var(--bad-soft);color:var(--bad)}
+.chip.paid{background:var(--brand-soft);color:var(--brand)}
+.right{text-align:right;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.right .row{flex-wrap:nowrap;gap:6px}.right .row .b{white-space:nowrap;padding:7px 9px}.prow>div:first-child{min-width:0}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 14px;box-shadow:var(--shadow)}
+.kpi small{color:var(--muted);display:block;font-size:12px;font-weight:600}
+.kpi b{font-family:var(--font-display);font-size:22px;font-weight:700}
+.chips{display:flex;gap:6px;margin-bottom:12px;background:var(--brand-soft);padding:4px;border-radius:12px}
+.chips button{flex:1;border:0;background:transparent;border-radius:9px;padding:8px;font-size:13px;font-weight:700;color:var(--brand)}
+.chips button.on{background:var(--surface);box-shadow:var(--shadow)}
+.empty{text-align:center;color:var(--muted);padding:30px 12px}
+.empty .bigic{display:grid;place-items:center;width:52px;height:52px;border-radius:50%;background:var(--brand-soft);color:var(--brand);margin:0 auto 10px}
+.empty .bigic .ic{width:26px;height:26px;vertical-align:0}
+#modal{position:fixed;inset:0;background:rgba(5,15,9,.55);display:none;z-index:40;align-items:flex-end;justify-content:center}
+#modal.on{display:flex}
+.sheet{background:var(--surface);color:var(--text);width:100%;max-width:640px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+.sheet h2{margin:0 0 6px;font-size:20px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tbl{width:100%;border-collapse:collapse}
+.tbl td{padding:8px 0;border-bottom:1px solid var(--line)}
+.tbl td+td{text-align:right}
+#toast{position:fixed;left:50%;bottom:150px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:22px;font-size:14px;font-weight:600;z-index:50;display:none;max-width:90%;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+#cartbar{position:fixed;left:12px;right:12px;bottom:calc(64px + env(safe-area-inset-bottom));z-index:7;display:none;max-width:756px;margin:0 auto}
+#cartbar .cb{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--brand);color:var(--brand-ink);border:0;border-radius:16px;padding:13px 16px;font-size:15px;font-weight:700;box-shadow:0 8px 24px rgba(10,40,25,.35)}
+#cartbar .cbl{display:flex;align-items:center;gap:12px}
+#cartbar .cbi{position:relative;display:inline-grid;place-items:center}
+#cartbar .cbi em{position:absolute;top:-8px;right:-10px;background:var(--brand-ink);color:var(--brand);border-radius:10px;font-style:normal;font-size:11px;font-weight:800;padding:0 6px;min-width:18px;text-align:center}
+#cartbar .cbt{font-family:var(--font-display);font-size:20px}
+main.hasbar{padding-bottom:92px}
+.shd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px}
+.shd h2{margin:0}
+.iconbtn2{border:0;background:var(--brand-soft);color:var(--brand);width:36px;height:36px;border-radius:10px;display:grid;place-items:center;padding:0}
+.iconbtn2 .ic{width:18px;height:18px;vertical-align:0}
+#docview{position:fixed;inset:0;z-index:25;background:var(--desk);display:none;flex-direction:column}
+#docview.on{display:flex}
+.dvtop{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border-bottom:1px solid var(--line)}
+.dvtop b{font-family:var(--font-display);font-size:16px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dvbody{flex:1;overflow:auto;padding:16px 12px}
+.paper{background:#fff;color:#111;max-width:640px;margin:0 auto;border-radius:6px;box-shadow:0 8px 28px rgba(0,0,0,.2);padding:6px}
+.paper .inv{padding:14px;font-size:12.5px}
+.dvmore{display:none;gap:8px;flex-wrap:wrap;padding:10px 12px;background:var(--surface);border-top:1px solid var(--line)}
+.dvmore.on{display:flex}
+.dvmore .b{flex:1;white-space:nowrap}
+.dvbar{display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--line)}
+.dvbar .b{flex:1}
+.dvbar .nf{flex:none;padding:11px 14px}
+#printarea{display:none}
+a.b{display:inline-flex}
+@media print{body>*:not(#printarea){display:none!important}#printarea{display:block!important}body{background:#fff!important;padding:0!important}.inv{padding:0}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (min-width:700px){.grid{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}.sheet{border-radius:20px;margin-bottom:6vh;align-self:center}#modal{align-items:center}}
+.inv .lg{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:9px;background:#1f6f43;color:#fff;margin-bottom:6px}
+.inv .lg svg{width:20px;height:20px}
+.inv{background:#fff;color:#111;font:13px/1.45 system-ui,Arial,sans-serif;padding:6px}
+.inv h1{font-size:22px;margin:0;color:#1f6f43;letter-spacing:.5px}
+.inv .top{display:flex;justify-content:space-between;gap:14px;margin-bottom:14px}
+.inv .meta{text-align:right}
+.inv table{width:100%;border-collapse:collapse;margin:10px 0}
+.inv th{background:#1f6f43;color:#fff;text-align:left;padding:6px 7px;font-size:12px}
+.inv td{padding:6px 7px;border-bottom:1px solid #e3e8e5}
+.inv .r{text-align:right}
+.inv .totals{margin-left:auto;width:230px}
+.inv .totals div{display:flex;justify-content:space-between;padding:3px 0}
+.inv .totals .g{font-weight:700;font-size:15px;border-top:2px solid #1f6f43;margin-top:3px;padding-top:6px}
+.inv .stamp{display:inline-block;border:2px solid #1f6f43;color:#1f6f43;padding:2px 10px;border-radius:5px;font-weight:700;transform:rotate(-4deg);margin-top:6px}
+.inv .stamp.u{border-color:#c0392b;color:#c0392b}
+.inv .foot{margin-top:16px;color:#555;font-size:12px;white-space:pre-line}
+</style>
+</head>
+<body>
+<header id="hdr"></header>
+<div id="banner"></div>
+<main id="main"><div class="empty">Loading…</div></main>
+<div id="cartbar"></div>
+<nav id="nav"></nav>
+<div id="modal"><div class="sheet" id="sheet"></div></div>
+<div id="toast"></div>
+<div id="docview"></div>
+<div id="printarea"></div>
+<script>
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=v=>{const n=parseFloat(String(v==null?'':v).replace(',','.'));return isFinite(n)?n:0};
+const R=n=>{const [a,b]=(Math.round(num(n)*100)/100).toFixed(2).split('.');return 'R'+a.replace(/\B(?=(\d{3})+$)/g,' ')+'.'+b};
+const dFmt=ts=>new Date(ts).toLocaleDateString('en-ZA',{day:'numeric',month:'short',year:'numeric'});
+const newId=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+const byName=(a,b)=>String(a.name).localeCompare(String(b.name));
+const DEF={name:'Garden Route Green',address:'',phone:'',email:'',vatNo:'',vatOn:false,bank:'',nextInv:1,cover:14,staff:['Xalinda','Xavier','Alinda','Alex'],footer:'Thank you for your business!'};
+
+const S={products:[],sales:[],invoices:[],settings:{},cart:[],tab:'sell',q:'',q2:'',cat:'',cat2:'',by:'',cust:{name:'',phone:'',address:''},pay:'Cash',range:'today',loaded:{},rate:{},busy:false};
+let DB=null,DL=null;
+const st=()=>Object.assign({},DEF,S.settings);
+const prod=id=>S.products.find(p=>p.id===id);
+
+/* ---------- storage (saved in this browser) ---------- */
+const LS='garden-route-green-data';
+function persist(){try{localStorage.setItem(LS,JSON.stringify({products:S.products,sales:S.sales,invoices:S.invoices,settings:S.settings}))}catch(e){note('This browser could not save your data. Use Settings > Back up data often.')}}
+function loadLocal(){try{const d=JSON.parse(localStorage.getItem(LS)||'null');if(d){S.products=d.products||[];S.sales=d.sales||[];S.invoices=d.invoices||[];S.settings=d.settings||{}}}catch(e){}}
+async function put(c,id,data){
+  if(DB){await DB.collection(c).doc(id).set(data)}
+  else{const a=S[c],i=a.findIndex(x=>x.id===id),o=Object.assign({id},data);if(i<0)a.unshift(o);else a[i]=o;persist()}
+}
+async function upd(c,id,patch){
+  if(DB){await DB.collection(c).doc(id).update(patch)}
+  else{Object.assign(S[c].find(x=>x.id===id)||{},patch);persist()}
+}
+async function del(c,id){
+  if(DB){await DB.collection(c).doc(id).delete()}
+  else{S[c]=S[c].filter(x=>x.id!==id);persist()}
+}
+function sub(name,key,order){
+  let q=DB.collection(name);
+  if(order)q=q.orderBy(order,'desc').limit(1000);
+  const t=setTimeout(()=>{if(!S.loaded[key]){S.loaded[key]=1;note('Data is slow to load – showing what is available.');render()}},10000);
+  q.onSnapshot(s=>{clearTimeout(t);S[key]=s.docs.map(d=>Object.assign({id:d.id},d.data()));S.loaded[key]=1;render()},
+    ()=>{S.loaded[key]=1;note('Could not load '+name+'.');render()});
+}
+function note(t){const b=$('#banner');b.textContent=t;b.style.display=t?'block':'none'}
+function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)}
+
+/* ---------- derived stock info ---------- */
+function derive(){
+  const now=Date.now(),cut=now-30*864e5;let old=now;const m={};
+  for(const s of S.sales){if(s.ts<cut)continue;old=Math.min(old,s.ts);for(const i of (s.items||[]))m[i.pid]=(m[i.pid]||0)+num(i.qty)}
+  const days=Math.min(30,Math.max(7,(now-old)/864e5));
+  S.rate={};for(const k in m)S.rate[k]=m[k]/days;
+}
+function info(p){
+  const stock=num(p.stock),min=num(p.min),rate=S.rate[p.id]||0,cover=rate>0?stock/rate:Infinity;
+  let s='ok';
+  if(stock<=0)s='out';else if(stock<=min)s='low';else if(cover<7)s='soon';
+  const target=Math.max(min*2,Math.ceil(rate*st().cover));
+  const pack=Math.max(1,num(p.pack)||1);
+  let qty=Math.max(0,target-stock);qty=Math.ceil(qty/pack)*pack;
+  if(s!=='ok'&&qty<=0)qty=pack;
+  return{s,stock,min,rate,cover,qty,cost:qty*num(p.cost)};
+}
+const LBL={ok:'In stock',soon:'Running low',low:'Low',out:'Out'};
+
+/* ---------- icons (24px line icons) ---------- */
+const IC={
+ cart:'<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
+ box:'<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>',
+ truck:'<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>',
+ doc:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+ chart:'<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
+ sliders:'<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>',
+ plus:'<path d="M5 12h14"/><path d="M12 5v14"/>',
+ minus:'<path d="M5 12h14"/>',
+ x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+ check:'<path d="M20 6 9 17l-5-5"/>',
+ tag:'<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/>',
+ upload:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>',
+ printer:'<path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/>',
+ copy:'<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+ send:'<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
+ more:'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+ back:'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+ leaf:'<path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>'
+};
+const ico=n=>`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
+
+/* ---------- views ---------- */
+const catList=()=>[...new Set(S.products.map(p=>String(p.category||'').trim()).concat(st().cats||[]).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+const staffList=()=>{const l=(st().staff||[]).filter(Boolean);return l.length?l:DEF.staff};
+function catChips(key){
+  const cs=catList();if(!cs.length)return '';
+  const cur=S[key];
+  return '<div class="catbar"><button class="'+(cur?'':'on')+'" data-a="cat" data-k="'+key+'" data-c="">All</button>'+cs.map(c=>'<button class="'+(cur===c?'on':'')+'" data-a="cat" data-k="'+key+'" data-c="'+esc(c)+'">'+esc(c)+'</button>').join('')+'</div>';
+}
+function cartTotal(){return S.cart.reduce((a,c)=>a+num(c.qty)*num(c.price),0)}
+function cartSheet(){
+  const n=S.cart.reduce((a,c)=>a+num(c.qty),0);
+  let h=`<div class="shd"><h2>Cart <span class="sub">· ${S.cart.length} item${S.cart.length===1?'':'s'}</span></h2><button class="iconbtn2" data-a="close" aria-label="Close">${ico('x')}</button></div>`;
+    h+=S.cart.map(c=>{const p=prod(c.pid)||{name:'?'};return `<div class="line"><div class="ln">${esc(p.name)}</div><div></div>
+      <div class="ctl"><button data-a="cq" data-id="${c.pid}" data-d="-1" aria-label="Less">${ico('minus')}</button>
+      <input id="cqty_${c.pid}" type="number" inputmode="decimal" data-in="cqty" data-id="${c.pid}" value="${c.qty}">
+      <button data-a="cq" data-id="${c.pid}" data-d="1" aria-label="More">${ico('plus')}</button>
+      <input class="pr" id="cprice_${c.pid}" type="number" inputmode="decimal" step="0.01" data-in="cprice" data-id="${c.pid}" value="${c.price}">
+      <b id="la_${c.pid}">${R(c.qty*c.price)}</b>
+      <button class="rm" data-a="crm" data-id="${c.pid}" aria-label="Remove">${ico('x')}</button></div></div>`}).join('');
+    h+=`<div class="tot"><span>Total</span><b id="ctot">${R(cartTotal())}</b></div>
+      <div class="two"><div><label>Payment</label><select data-in="pay">${['Cash','Card','EFT','On account'].map(x=>`<option${S.pay===x?' selected':''}>${x}</option>`).join('')}</select></div>
+      <div><label>Sold by</label>${staffList().length?`<select data-in="by"><option value="">Choose…</option>${staffList().map(n=>`<option${S.by===n?' selected':''}>${esc(n)}</option>`).join('')}</select>`:`<input data-in="by" placeholder="Salesperson" value="${esc(S.by)}">`}</div></div>
+      <div class="row" style="margin-top:12px"><button class="b" data-a="checkout">${ico('check')} Complete sale</button><button class="b alt" data-a="checkoutinv">${ico('doc')} Sale + invoice</button><button class="b red nf" data-a="clear">Clear</button></div>`;
+  return h;
+}
+function drawCartBar(){
+  const el=$('#cartbar');if(!el)return;
+  const show=S.tab==='sell'&&S.cart.length&&!S.cartOpen&&S.loaded.products;
+  $('#main').classList.toggle('hasbar',!!show);
+  if(!show){el.style.display='none';el.innerHTML='';return}
+  const n=S.cart.reduce((a,c)=>a+num(c.qty),0);
+  el.style.display='block';
+  el.innerHTML=`<button class="cb" data-a="cartopen"><span class="cbl"><span class="cbi">${ico('cart')}<em>${Math.round(n*100)/100}</em></span>View cart</span><span class="cbt">${R(cartTotal())}</span></button>`;
+}
+function drawCartSheet(){if(S.cartOpen)$('#sheet').innerHTML=cartSheet()}
+function cartChanged(){render();if(S.cartOpen){if(!S.cart.length)closeModal();else drawCartSheet()}}
+function sell(){
+  const q=S.q.toLowerCase();
+  const list=S.products.filter(p=>(!S.cat||p.category===S.cat)&&(!q||String(p.name).toLowerCase().includes(q)||String(p.category||'').toLowerCase().includes(q))).sort(byName);
+  let h='';
+  h+=catChips('cat')+`<input class="search" id="q" data-in="q" placeholder="Search products to sell" value="${esc(S.q)}">`;
+  if(!S.products.length)h+='<div class="empty">No products yet.<br>Go to <b>Stock</b> to add or import your products.</div>';
+  else h+='<div class="grid">'+list.map(p=>{const i=info(p);return `<button class="tile" data-a="add" data-id="${p.id}">${p.category?`<small class="tc">${esc(p.category)}</small>`:''}<b>${esc(p.name)}</b><span>${R(p.price)}${p.unit?' / '+esc(p.unit):''}</span><small class="${i.s==='out'?'out':i.s==='low'?'low':''}">${i.s==='out'?'Out of stock':i.stock+' in stock'}</small></button>`}).join('')+'</div>';
+  return h;
+}
+function stock(){
+  const q=S.q2.toLowerCase();
+  const list=S.products.filter(p=>(!S.cat2||p.category===S.cat2)&&(!q||String(p.name).toLowerCase().includes(q)||String(p.supplier||'').toLowerCase().includes(q)||String(p.category||'').toLowerCase().includes(q))).sort(byName);
+  const val=S.products.reduce((a,p)=>a+Math.max(0,num(p.stock))*num(p.cost),0);
+  let h=`<div class="kpis"><div class="kpi"><small>Products</small><b>${S.products.length}</b></div><div class="kpi"><small>Stock value (cost)</small><b>${R(val)}</b></div></div>
+  <div class="row" style="margin-bottom:10px"><button class="b" data-a="pnew">${ico('plus')} Add product</button><button class="b alt" data-a="pimport">${ico('upload')} Import</button><button class="b alt" data-a="cats">${ico('tag')} Categories</button></div>
+  ${catChips('cat2')}<input class="search" id="q2" data-in="q2" placeholder="Search stock, category or supplier" value="${esc(S.q2)}">`;
+  if(!list.length)return h+'<div class="empty">Nothing here yet.</div>';
+  h+='<section class="card">'+list.map(p=>{const i=info(p);return `<div class="prow st-${i.s}"><div><b>${esc(p.name)}</b><div class="sub">${p.category?'<b>'+esc(p.category)+'</b> · ':''}${R(p.price)} sell · ${R(p.cost)} cost${p.supplier?' · '+esc(p.supplier):''}</div><div class="sub">Reorder at ${i.min}</div></div>
+    <div class="right"><span class="chip ${i.s}">${i.s==='ok'?'':LBL[i.s]+' · '}${i.stock}${p.unit?' '+esc(p.unit):''}</span><div class="row"><button class="b alt sm nf" data-a="recv" data-id="${p.id}">${ico('plus')} Receive</button><button class="b alt sm nf" data-a="pedit" data-id="${p.id}">Edit</button></div></div></div>`}).join('')+'</section>';
+  return h;
+}
+function reorderItems(){
+  return S.products.map(p=>({p,i:info(p)})).filter(x=>x.i.s!=='ok').sort((a,b)=>String(a.p.supplier||'~').localeCompare(String(b.p.supplier||'~'))||byName(a.p,b.p));
+}
+function reorder(){
+  const items=reorderItems();
+  if(!items.length)return '<div class="empty"><span class="bigic">'+ico('check')+'</span>Nothing to reorder right now.<br>Items show up here when they reach their reorder level or will run out within a week.</div>';
+  const total=items.reduce((a,x)=>a+x.i.cost,0);
+  let h=`<div class="kpis"><div class="kpi"><small>Items to order</small><b>${items.length}</b></div><div class="kpi"><small>Estimated cost</small><b>${R(total)}</b></div></div>`;
+  const groups={};items.forEach(x=>{const k=x.p.supplier||'No supplier set';(groups[k]=groups[k]||[]).push(x)});
+  S.groups=Object.keys(groups);
+  h+=S.groups.map((k,gi)=>{const g=groups[k];return `<section class="card"><div class="row" style="margin-bottom:6px"><h3 style="margin:0">${esc(k)}</h3><button class="b sm nf" data-a="orderlist" data-g="${gi}">Order list</button></div>`+
+    g.map(x=>`<div class="prow st-${x.i.s}"><div><b>${esc(x.p.name)}</b><div class="sub">${x.p.category?esc(x.p.category)+' · ':''}${x.i.stock} left · reorder at ${x.i.min}${x.i.rate>0?' · sells ~'+(Math.round(x.i.rate*10)/10)+'/day':''}${isFinite(x.i.cover)?' · ~'+Math.max(0,Math.floor(x.i.cover))+' days left':''}</div></div>
+    <div class="right"><span class="chip ${x.i.s}">${LBL[x.i.s]}</span><div class="sub">Order <b>${x.i.qty}</b> · ${R(x.i.cost)}</div><button class="b alt sm nf" data-a="recv" data-id="${x.p.id}" data-qty="${x.i.qty}">Received</button></div></div>`).join('')+'</section>'}).join('');
+  return h;
+}
+function invoices(){
+  if(!S.invoices.length)return '<div class="empty">No invoices yet.<br>On the <b>Sell</b> tab, add items to the cart, enter the customer name and tap <b>Sale + invoice</b>.</div>';
+  const list=S.invoices.slice().sort((a,b)=>b.ts-a.ts);
+  const owed=list.filter(v=>v.status!=='paid').reduce((a,v)=>a+num(v.total),0);
+  return `<div class="kpis"><div class="kpi"><small>Invoices</small><b>${list.length}</b></div><div class="kpi"><small>Unpaid</small><b>${R(owed)}</b></div></div><section class="card">`+
+    list.map(v=>`<div class="prow" data-a="invopen" data-id="${v.id}" style="cursor:pointer"><div><b>${esc(v.no)}</b><div class="sub">${esc(v.customer&&v.customer.name||'Customer')} · ${dFmt(v.ts)}</div></div><div class="right"><b>${R(v.total)}</b><span class="chip ${v.status==='paid'?'paid':'unpaid'}">${v.status==='paid'?'Paid':'Unpaid'}</span></div></div>`).join('')+'</section>';
+}
+function report(){
+  const now=new Date();const sod=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
+  const from=S.range==='today'?sod:Date.now()-(S.range==='week'?7:30)*864e5;
+  const sales=S.sales.filter(s=>s.ts>=from).sort((a,b)=>b.ts-a.ts);
+  const rev=sales.reduce((a,s)=>a+num(s.total),0);
+  const cogs=sales.reduce((a,s)=>a+(s.items||[]).reduce((b,i)=>b+num(i.qty)*num(i.cost),0),0);
+  const top={};sales.forEach(s=>(s.items||[]).forEach(i=>{const t=top[i.pid]||(top[i.pid]={name:i.name,qty:0,rev:0});t.qty+=num(i.qty);t.rev+=num(i.qty)*num(i.price)}));
+  const tl=Object.values(top).sort((a,b)=>b.rev-a.rev).slice(0,5);
+  const chip=(k,l)=>`<button class="${S.range===k?'on':''}" data-a="range" data-r="${k}">${l}</button>`;
+  let h=`<div class="chips">${chip('today','Today')}${chip('week','7 days')}${chip('month','30 days')}</div>
+  <div class="kpis"><div class="kpi"><small>Sales</small><b>${R(rev)}</b></div><div class="kpi"><small>Est. profit</small><b>${R(rev-cogs)}</b></div><div class="kpi"><small>No. of sales</small><b>${sales.length}</b></div><div class="kpi"><small>Cost of goods</small><b>${R(cogs)}</b></div></div>`;
+  const bc={};sales.forEach(s=>(s.items||[]).forEach(i=>{const k=i.cat||(prod(i.pid)||{}).category||'Uncategorised';const t=bc[k]||(bc[k]={qty:0,rev:0});t.qty+=num(i.qty);t.rev+=num(i.qty)*num(i.price)}));
+  const bp={};sales.forEach(x=>{const k=x.by||'Not recorded';const t=bp[k]||(bp[k]={n:0,rev:0});t.n++;t.rev+=num(x.total)});
+  const pl=Object.entries(bp).sort((a,b)=>b[1].rev-a[1].rev);
+  if(pl.length>1||(pl.length===1&&pl[0][0]!=='Not recorded'))h+='<section class="card"><h3>Sales by salesperson</h3>'+pl.map(([k,t])=>`<div class="prow"><div>${esc(k)}<div class="sub">${t.n} sale${t.n===1?'':'s'}</div></div><b>${R(t.rev)}</b></div>`).join('')+'</section>';
+  const cl=Object.entries(bc).sort((a,b)=>b[1].rev-a[1].rev);
+  if(cl.length>1||(cl.length===1&&cl[0][0]!=='Uncategorised'))h+='<section class="card"><h3>Sales by category</h3>'+cl.map(([k,t])=>`<div class="prow"><div>${esc(k)}<div class="sub">${t.qty} sold</div></div><b>${R(t.rev)}</b></div>`).join('')+'</section>';
+  if(tl.length)h+='<section class="card"><h3>Top sellers</h3>'+tl.map(t=>`<div class="prow"><div>${esc(t.name)}<div class="sub">${t.qty} sold</div></div><b>${R(t.rev)}</b></div>`).join('')+'</section>';
+  h+='<section class="card"><h3>Sales</h3>'+(sales.length?sales.slice(0,60).map(s=>{const hasInv=S.invoices.find(v=>v.saleId===s.id);return `<div class="prow"><div><b>${R(s.total)}</b> <span class="sub">· ${esc(s.pay||'')}${s.by?' · by '+esc(s.by):''}</span><div class="sub">${new Date(s.ts).toLocaleString('en-ZA',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}${s.customer?' · '+esc(s.customer):''}</div><div class="sub">${(s.items||[]).map(i=>esc(i.name)+' ×'+i.qty).join(', ')}</div></div>
+    <div class="right">${hasInv?`<button class="b alt sm nf" data-a="invopen" data-id="${hasInv.id}">${esc(hasInv.no)}</button>`:`<button class="b alt sm nf" data-a="saleinv" data-id="${s.id}">Invoice</button>`}<button class="b red sm nf" data-a="void" data-id="${s.id}">Void</button></div></div>`}).join(''):'<div class="empty">No sales in this period.</div>')+'</section>';
+  return h;
+}
+const VIEWS={sell,stock,reorder,invoices,report};
+const TABS=[['sell','cart','Sell'],['stock','box','Stock'],['reorder','truck','Reorder'],['invoices','doc','Invoices'],['report','chart','Report']];
+
+function render(){
+  if(!S.loaded.products){$('#main').innerHTML='<div class="empty">Loading…</div>';drawNav(0);return}
+  derive();
+  const f=document.activeElement,main=$('#main');
+  const fid=f&&main.contains(f)&&f.tagName==='INPUT'&&f.id?f.id:null;
+  let sp=0;try{sp=fid?f.selectionStart:0}catch(e){}
+  main.innerHTML=VIEWS[S.tab]();
+  drawNav(reorderItems().length);drawCartBar();
+  if(fid){const e=document.getElementById(fid);if(e){e.focus();try{e.setSelectionRange(sp,sp)}catch(x){}}}
+}
+function drawNav(n){
+  $('#nav').innerHTML=TABS.map(t=>`<button class="${S.tab===t[0]?'on':''}" data-a="tab" data-t="${t[0]}">${ico(t[1])}<span>${t[2]}</span>${t[0]==='reorder'&&n?`<span class="bdg">${n}</span>`:''}</button>`).join('');
+}
+function refreshCart(){
+  S.cart.forEach(c=>{const e=document.getElementById('la_'+c.pid);if(e)e.textContent=R(c.qty*c.price)});
+  const t=document.getElementById('ctot');if(t)t.textContent=R(cartTotal());drawCartBar();
+}
+
+/* ---------- modal ---------- */
+function openModal(h){$('#sheet').innerHTML=h;$('#modal').classList.add('on')}
+function closeModal(){S.cartOpen=false;$('#modal').classList.remove('on');$('#sheet').innerHTML='';drawCartBar()}
+function ask(msg,act,id){openModal(`<h2>Are you sure?</h2><p>${esc(msg)}</p><div class="row"><button class="b red" data-a="${act}" data-id="${id||''}">Yes</button><button class="b alt" data-a="close">Cancel</button></div>`)}
+const val=id=>{const e=document.getElementById(id);return e?e.value:''};
+
+/* ---------- invoices & printing ---------- */
+function invBody(v){
+  const b=v.biz||{},c=v.customer||{};
+  const vat=v.vatOn?num(v.total)*15/115:0,subt=num(v.total)-vat;
+  return `<div class="inv"><div class="top"><div><div class="lg">${ico('leaf')}</div><h1>${esc(b.name)}</h1><div>${esc(b.address).replace(/\n/g,'<br>')}</div><div>${esc(b.phone)} ${esc(b.email)}</div>${v.vatOn&&b.vatNo?`<div>VAT No: ${esc(b.vatNo)}</div>`:''}</div>
+  <div class="meta"><div style="font-size:18px;font-weight:700">${v.vatOn?'TAX INVOICE':'INVOICE'}</div><div><b>${esc(v.no)}</b></div><div>${dFmt(v.ts)}</div>${v.by?`<div>Served by: ${esc(v.by)}</div>`:''}<div class="stamp ${v.status==='paid'?'':'u'}">${v.status==='paid'?'PAID':'UNPAID'}</div></div></div>
+  ${c.name||c.address||c.phone?`<div><b>Bill to</b><br>${esc(c.name)}<br>${esc(c.address).replace(/\n/g,'<br>')}${c.phone?'<br>'+esc(c.phone):''}</div>`:''}
+  <table><tr><th>Description</th><th class="r">Qty</th><th class="r">Unit price</th><th class="r">Amount</th></tr>
+  ${(v.items||[]).map(i=>`<tr><td>${esc(i.name)}</td><td class="r">${i.qty}</td><td class="r">${R(i.price)}</td><td class="r">${R(i.qty*i.price)}</td></tr>`).join('')}</table>
+  <div class="totals">${v.vatOn?`<div><span>Subtotal (excl. VAT)</span><span>${R(subt)}</span></div><div><span>VAT 15%</span><span>${R(vat)}</span></div>`:''}<div class="g"><span>Total${v.vatOn?' (incl. VAT)':''}</span><span>${R(v.total)}</span></div></div>
+  ${b.bank?`<div class="foot"><b>Banking details</b>\n${esc(b.bank)}</div>`:''}<div class="foot">${esc(b.footer)}</div></div>`;
+}
+/* ---------- printing and PDF (no libraries) ---------- */
+const HW=[278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
+const HB=[278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584];
+const pdfClean=t=>String(t==null?'':t).replace(/[–—]/g,'-').replace(/×/g,'x').replace(/[·•]/g,'-').replace(/[‘’]/g,"'").replace(/[“”]/g,'"').replace(/[^\x20-\x7e\xa0-\xff]/g,'?');
+const pdfEsc=t=>t.replace(/[\\()]/g,m=>'\\'+m);
+const textW=(t,size,bold)=>{const T=bold?HB:HW;let w=0;for(const ch of t){const c=ch.charCodeAt(0);w+=(c>=32&&c<=126)?T[c-32]:556}return w/1000*size*0.3528};
+function wrapText(t,max,size){
+  t=pdfClean(t);const out=[];
+  for(const para of t.split('\n')){let line='';
+    for(const w of para.split(' ')){const tryl=line?line+' '+w:w;if(line&&textW(tryl,size)>max){out.push(line);line=w}else line=tryl}
+    out.push(line)}
+  return out;
+}
+function pdfDoc(){
+  const pages=[[]],f=n=>String(Math.round(n*100)/100),mm=v=>v*2.8346,cur=()=>pages[pages.length-1],col=c=>c.map(x=>f(x/255)).join(' ');
+  return{
+    addPage(){pages.push([])},
+    text(x,y,t,o){o=o||{};const size=o.size||10;t=pdfClean(t);let px=mm(x);if(o.align==='r')px-=mm(textW(t,size,o.bold));
+      cur().push(`BT /${o.bold?'F2':'F1'} ${size} Tf ${col(o.color||[0,0,0])} rg ${f(px)} ${f(841.89-mm(y))} Td (${pdfEsc(t)}) Tj ET`)},
+    rect(x,y,w,h,c){cur().push(`${col(c)} rg ${f(mm(x))} ${f(841.89-mm(y+h))} ${f(mm(w))} ${f(mm(h))} re f`)},
+    line(x1,y1,x2,y2,c){cur().push(`${col(c)} RG 0.5 w ${f(mm(x1))} ${f(841.89-mm(y1))} m ${f(mm(x2))} ${f(841.89-mm(y2))} l S`)},
+    build(){
+      const objs=[],add=x=>{objs.push(x);return objs.length};
+      add('<< /Type /Catalog /Pages 2 0 R >>');add('');
+      add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>');
+      add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>');
+      const kids=[];
+      pages.forEach(p=>{const c=p.join('\n');const ci=add(`<< /Length ${c.length} >>\nstream\n${c}\nendstream`);
+        const pi=add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${ci} 0 R >>`);kids.push(pi+' 0 R')});
+      objs[1]=`<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${kids.length} >>`;
+      let out='%PDF-1.4\n';const offs=[];
+      objs.forEach((o,i)=>{offs.push(out.length);out+=`${i+1} 0 obj\n${o}\nendobj\n`});
+      const xr=out.length;
+      out+=`xref\n0 ${objs.length+1}\n0000000000 65535 f \n`+offs.map(o=>String(o).padStart(10,'0')+' 00000 n \n').join('')+`trailer\n<< /Size ${objs.length+1} /Root 1 0 R >>\nstartxref\n${xr}\n%%EOF`;
+      const u=new Uint8Array(out.length);for(let i=0;i<out.length;i++)u[i]=out.charCodeAt(i)&255;return u;
+    }
+  };
+}
+function buildPdf(o){
+  const P=pdfDoc(),L=16,Rm=194,G=[31,111,67],GREY=[80,80,80];let y=20;
+  P.text(L,y,o.title,{size:18,bold:true,color:G});
+  let yl=y+7;(o.head||[]).forEach(t=>{wrapText(t,100,10).forEach(l=>{P.text(L,yl,l,{size:10,color:GREY});yl+=5})});
+  let ym=y-1;(o.meta||[]).forEach((t,i)=>{P.text(Rm,ym,t,{size:i===0?14:10,bold:i<2,align:'r',color:i===0?G:[0,0,0]});ym+=i===0?7:5});
+  y=Math.max(yl,ym)+4;
+  if(o.billto&&o.billto.length){P.text(L,y,'Bill to',{bold:true});y+=5;o.billto.forEach(t=>{P.text(L,y,t);y+=5});y+=2}
+  const hdr=()=>{P.rect(L,y-4.8,Rm-L,7,G);o.cols.forEach(c=>P.text(c.x,y,c.t,{size:9,bold:true,color:[255,255,255],align:c.a}));y+=7};
+  hdr();
+  o.rows.forEach(r=>{
+    const lines=wrapText(r[0],o.cols[0].w,10),h=Math.max(1,lines.length)*5;
+    if(y+h>272){P.addPage();y=20;hdr()}
+    lines.forEach((ln,i)=>P.text(o.cols[0].x,y+i*5,ln,{size:10}));
+    for(let j=1;j<o.cols.length;j++)P.text(o.cols[j].x,y,r[j],{size:10,align:o.cols[j].a});
+    y+=h;P.line(L,y-3.4,Rm,y-3.4,[221,228,223]);
+  });
+  y+=3;
+  (o.totals||[]).forEach((t,i,a)=>{const last=i===a.length-1;
+    if(y>272){P.addPage();y=20}
+    if(last){P.line(130,y-4.6,Rm,y-4.6,G);y+=1}
+    P.text(132,y,t[0],{size:last?12:10,bold:last});P.text(Rm-2,y,t[1],{size:last?12:10,bold:last,align:'r'});y+=last?7:5.5});
+  y+=4;
+  (o.foot||[]).forEach(t=>{wrapText(t,Rm-L,9.5).forEach(l=>{if(y>280){P.addPage();y=20}P.text(L,y,l,{size:9.5,color:GREY});y+=4.6});y+=1.5});
+  return P.build();
+}
+function invPdfData(v){
+  const b=v.biz||{},c=v.customer||{},vat=v.vatOn?num(v.total)*15/115:0,subt=num(v.total)-vat;
+  const head=[].concat((b.address||'').split('\n').filter(Boolean),[[b.phone,b.email].filter(Boolean).join('   ')].filter(Boolean),v.vatOn&&b.vatNo?['VAT No: '+b.vatNo]:[]);
+  return{title:b.name||'Invoice',head,
+    meta:[v.vatOn?'TAX INVOICE':'INVOICE',v.no,dFmt(v.ts)].concat(v.by?['Served by: '+v.by]:[],[v.status==='paid'?'PAID':'UNPAID']),
+    billto:[c.name,c.address,c.phone].filter(Boolean),
+    cols:[{t:'Description',x:L0+2,a:'l',w:92},{t:'Qty',x:128,a:'r'},{t:'Unit price',x:160,a:'r'},{t:'Amount',x:192,a:'r'}],
+    rows:(v.items||[]).map(i=>[i.name,String(i.qty),R(i.price),R(i.qty*i.price)]),
+    totals:(v.vatOn?[['Subtotal (excl. VAT)',R(subt)],['VAT 15%',R(vat)]]:[]).concat([['Total'+(v.vatOn?' (incl. VAT)':''),R(v.total)]]),
+    foot:[].concat(b.bank?['Banking details:\n'+b.bank]:[],b.footer?[b.footer]:[])};
+}
+const L0=16;
+function orderPdfData(o){
+  const total=o.items.reduce((a,x)=>a+x.i.cost,0);
+  return{title:'Purchase order',head:[st().name,dFmt(Date.now()),'Supplier: '+o.sup],meta:[],
+    cols:[{t:'Item',x:L0+2,a:'l',w:105},{t:'Qty',x:150,a:'r'},{t:'Est. cost',x:192,a:'r'}],
+    rows:o.items.map(x=>[x.p.name,x.i.qty+(x.p.unit?' '+x.p.unit:''),R(x.i.cost)]),
+    totals:[['Estimated total',R(total)]],foot:[]};
+}
+function orderText(o){return `Order for ${o.sup} - ${st().name} - ${dFmt(Date.now())}\n\n`+o.items.map(x=>`${x.p.name}: ${x.i.qty}${x.p.unit?' '+x.p.unit:''}`).join('\n')}
+async function sharePdf(name,bytes){
+  const blob=new Blob([bytes],{type:'application/pdf'});
+  try{
+    const f=new File([blob],name,{type:'application/pdf'});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});return}
+  }catch(e){if(e&&e.name==='AbortError')return}
+  const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);
+  toast('PDF saved to your downloads');
+}
+function printHtml(html){
+  const pa=$('#printarea');pa.innerHTML=html;let ok=false;
+  const mark=()=>{ok=true};
+  window.addEventListener('beforeprint',mark,{once:true});
+  const mq=window.matchMedia&&window.matchMedia('print');if(mq&&mq.addEventListener)mq.addEventListener('change',mark,{once:true});
+  window.addEventListener('afterprint',()=>{pa.innerHTML=''},{once:true});
+  try{window.print()}catch(e){}
+  setTimeout(()=>{window.removeEventListener('beforeprint',mark);if(!ok){pa.innerHTML='';toast('Could not open printing. Use More > Save PDF instead.')}},1200);
+}
+const waLink=t=>'https://wa.me/?text='+encodeURIComponent(t);
+function invText(v){
+  const c=v.customer||{},b=v.biz||{};
+  return `${v.vatOn?'TAX INVOICE':'INVOICE'} ${v.no}\n${b.name}\nDate: ${dFmt(v.ts)}\nBill to: ${c.name||''}\n\n`+(v.items||[]).map(i=>`${i.name}  ${i.qty} x ${R(i.price)} = ${R(i.qty*i.price)}`).join('\n')+`\n\nTOTAL: ${R(v.total)}${v.vatOn?' (incl. VAT)':''}\nStatus: ${v.status==='paid'?'PAID':'UNPAID'}${b.bank?'\n\nBanking details:\n'+b.bank:''}`;
+}
+async function copyText(t){
+  try{await navigator.clipboard.writeText(t);toast('Copied')}
+  catch(e){openModal(`<h2>Copy text</h2><textarea rows="12" id="ct">${esc(t)}</textarea><div class="row" style="margin-top:10px"><button class="b alt" data-a="close">Close</button></div>`);const e2=document.getElementById('ct');if(e2){e2.focus();e2.select()}}
+}
+async function makeInvoice(items,total,pay,cust,saleId,by){
+  const s=st();const n=num(s.nextInv)||1;
+  const inv={no:'INV-'+String(n).padStart(4,'0'),ts:Date.now(),customer:{name:cust.name||'',phone:cust.phone||'',address:cust.address||''},items,total,
+    vatOn:!!s.vatOn,status:pay==='On account'?'unpaid':'paid',saleId:saleId||'',by:by||'',
+    biz:{name:s.name,address:s.address,phone:s.phone,email:s.email,vatNo:s.vatNo,bank:s.bank,footer:s.footer}};
+  const id=newId();await put('invoices',id,inv);
+  await saveSettings(Object.assign({},s,{nextInv:n+1}));
+  return Object.assign({id},inv);
+}
+async function saveSettings(o){
+  if(DB)await DB.doc('shop/settings').set(o);else{S.settings=o;persist()}
+}
+function showDoc(o){
+  S.doc=o;const el=$('#docview');
+  el.innerHTML=`<div class="dvtop"><button class="iconbtn2" data-a="docclose" aria-label="Back">${ico('back')}</button><b>${esc(o.title)}</b>${o.chip||''}</div>
+  <div class="dvbody"><div class="paper">${o.body}</div></div>
+  <div class="dvmore" id="dvmore"><button class="b alt" data-a="doccopy">${ico('copy')} Copy text</button><button class="b alt" data-a="docpdf">${ico('upload')} Save PDF</button>${o.more||''}</div>
+  <div class="dvbar"><button class="b" data-a="docprint">${ico('printer')} Print</button><a class="b alt" href="${esc(waLink(o.text))}" target="_blank" rel="noopener" style="text-decoration:none">${ico('send')} Send</a><button class="b alt nf" data-a="docmore" aria-label="More">${ico('more')}</button></div>`;
+  el.classList.add('on');
+}
+function closeDoc(){const el=$('#docview');el.classList.remove('on');el.innerHTML='';S.doc=null}
+function showInvoice(v){
+  showDoc({title:v.no,chip:`<span class="chip ${v.status==='paid'?'paid':'unpaid'}">${v.status==='paid'?'Paid':'Unpaid'}</span>`,body:invBody(v),text:invText(v),
+    pdfName:v.no+'.pdf',pdf:()=>buildPdf(invPdfData(v)),
+    more:`<button class="b alt" data-a="invpaid" data-id="${v.id}">${v.status==='paid'?'Mark unpaid':'Mark paid'}</button><button class="b red" data-a="invdel" data-id="${v.id}">Delete</button>`});
+}
+
+/* ---------- product forms ---------- */
+function prodForm(p){
+  p=p||{};
+  return `<h2>${p.id?'Edit product':'Add product'}</h2>
+  <label>Name</label><input id="f_name" value="${esc(p.name)}">
+  <label>Category / product type</label><input id="f_cat" list="catopts" placeholder="e.g. Vapes, Gummies, Joints" value="${esc(p.category)}">
+  <datalist id="catopts">${[...new Set(['Vapes','Gummies','Joints'].concat(catList()))].map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+  <div class="two"><div><label>Selling price (R)</label><input id="f_price" type="number" inputmode="decimal" step="0.01" value="${p.price!=null?p.price:''}"></div>
+  <div><label>Cost price (R)</label><input id="f_cost" type="number" inputmode="decimal" step="0.01" value="${p.cost!=null?p.cost:''}"></div></div>
+  <div class="two"><div><label>In stock now</label><input id="f_stock" type="number" inputmode="decimal" value="${p.stock!=null?p.stock:''}"></div>
+  <div><label>Reorder when stock reaches</label><input id="f_min" type="number" inputmode="decimal" value="${p.min!=null?p.min:''}"></div></div>
+  <div class="two"><div><label>Unit (e.g. each, box, kg)</label><input id="f_unit" value="${esc(p.unit)}"></div>
+  <div><label>Order in packs of</label><input id="f_pack" type="number" inputmode="decimal" placeholder="1" value="${p.pack||''}"></div></div>
+  <label>Supplier</label><input id="f_supplier" value="${esc(p.supplier)}">
+  <div class="row" style="margin-top:14px"><button class="b" data-a="psave" data-id="${p.id||''}">Save</button>${p.id?`<button class="b red nf" data-a="pdelask" data-id="${p.id}">Delete</button>`:''}<button class="b alt nf" data-a="close">Cancel</button></div>`;
+}
+function settingsForm(){
+  const s=st();
+  return `<h2>Shop settings</h2><p class="sub">These details print on your invoices.</p>
+  <label>Business name</label><input id="s_name" value="${esc(s.name)}">
+  <label>Address</label><textarea id="s_address" rows="2">${esc(s.address)}</textarea>
+  <div class="two"><div><label>Phone</label><input id="s_phone" value="${esc(s.phone)}"></div><div><label>Email</label><input id="s_email" value="${esc(s.email)}"></div></div>
+  <label><input type="checkbox" id="s_vatOn" style="width:auto" ${s.vatOn?'checked':''}> We are VAT registered (prices include 15% VAT)</label>
+  <label>VAT number</label><input id="s_vatNo" value="${esc(s.vatNo)}">
+  <label>Banking details (shown on invoices)</label><textarea id="s_bank" rows="3">${esc(s.bank)}</textarea>
+  <label>Invoice footer note</label><input id="s_footer" value="${esc(s.footer)}">
+  <label>Salespeople (one name per line)</label><textarea id="s_staff" rows="3" placeholder="Xalinda">${esc(staffList().join('\n'))}</textarea>
+  <label>Order enough stock to last (days)</label><input id="s_cover" type="number" inputmode="numeric" value="${s.cover}">
+  <label>Data backup</label><div class="row"><button class="b alt" data-a="backup">${ico('upload')} Back up data</button><label class="b alt" style="margin:0;cursor:pointer">${ico('plus')} Restore<input id="restore_file" type="file" accept=".json,application/json" hidden></label></div>
+  <p class="sub">Your data is saved in this browser on this device. Back it up regularly, and before clearing browser data.</p>
+  <div class="row" style="margin-top:14px"><button class="b" data-a="ssave">Save</button><button class="b alt nf" data-a="close">Cancel</button></div>`;
+}
+
+/* ---------- actions ---------- */
+const A={
+  tab(d){S.tab=d.t;render();scrollTo(0,0)},
+  close(){closeModal()},
+  cartopen(){if(!S.cart.length)return;S.cartOpen=true;openModal(cartSheet());drawCartBar()},
+  add(d){const p=prod(d.id);if(!p)return;const c=S.cart.find(x=>x.pid===d.id);if(c)c.qty=num(c.qty)+1;else S.cart.push({pid:d.id,qty:1,price:num(p.price)});render()},
+  cq(d){const c=S.cart.find(x=>x.pid===d.id);if(!c)return;c.qty=Math.max(0,num(c.qty)+num(d.d));if(c.qty<=0)S.cart=S.cart.filter(x=>x!==c);cartChanged()},
+  crm(d){S.cart=S.cart.filter(x=>x.pid!==d.id);cartChanged()},
+  clear(){S.cart=[];S.cust={name:'',phone:'',address:''};cartChanged()},
+  async checkout(){await doCheckout(false)},
+  async checkoutinv(){await doCheckout(true)},
+  pnew(){openModal(prodForm())},
+  pedit(d){openModal(prodForm(prod(d.id)))},
+  async psave(d){
+    const name=val('f_name').trim();if(!name){toast('Enter a product name');return}
+    const o={name,category:val('f_cat').trim(),price:num(val('f_price')),cost:num(val('f_cost')),stock:num(val('f_stock')),min:num(val('f_min')),unit:val('f_unit').trim(),pack:num(val('f_pack'))||1,supplier:val('f_supplier').trim()};
+    await put('products',d.id||newId(),o);closeModal();toast('Saved');render();
+  },
+  pdelask(d){ask('Delete this product? Past sales keep their history.','pdel',d.id)},
+  async pdel(d){await del('products',d.id);S.cart=S.cart.filter(x=>x.pid!==d.id);closeModal();render()},
+  recv(d){
+    const p=prod(d.id);if(!p)return;
+    openModal(`<h2>Receive stock</h2><p><b>${esc(p.name)}</b> – now ${num(p.stock)} in stock</p>
+    <label>Quantity received</label><input id="r_qty" type="number" inputmode="decimal" value="${d.qty||''}">
+    <label>New cost per unit (optional)</label><input id="r_cost" type="number" inputmode="decimal" step="0.01" placeholder="${num(p.cost)}">
+    <div class="row" style="margin-top:14px"><button class="b" data-a="recvsave" data-id="${p.id}">Add to stock</button><button class="b alt nf" data-a="close">Cancel</button></div>`);
+  },
+  async recvsave(d){
+    const p=prod(d.id),q=num(val('r_qty'));if(!p||q<=0){toast('Enter a quantity');return}
+    const patch={stock:num(p.stock)+q};const c=val('r_cost');if(c!=='')patch.cost=num(c);
+    await upd('products',p.id,patch);closeModal();toast(q+' added to '+p.name);render();
+  },
+  pimport(){openModal(`<h2>Import products</h2><p class="sub">One product per line, separated by commas or tabs (paste straight from a spreadsheet):<br><b>Name, selling price, cost price, stock, reorder level, supplier, category</b><br>Only the name is required. Names can't contain commas.</p>
+    <textarea id="imp" rows="9" placeholder="Maize meal 10kg, 95, 78, 20, 5, Boland Wholesalers"></textarea>
+    <div class="row" style="margin-top:12px"><button class="b" data-a="pimportgo">Import</button><button class="b alt nf" data-a="close">Cancel</button></div>`)},
+  async pimportgo(){
+    const lines=val('imp').split(/\n/).map(l=>l.trim()).filter(Boolean);let n=0;
+    for(const l of lines){const c=l.split(/\t|,|;/).map(x=>x.trim());if(!c[0])continue;
+      if(/^name$/i.test(c[0]))continue;
+      await put('products',newId(),{name:c[0],price:num(c[1]),cost:num(c[2]),stock:num(c[3]),min:num(c[4]),unit:'',pack:1,supplier:c[5]||'',category:c[6]||''});n++}
+    closeModal();toast(n+' products imported');render();
+  },
+  orderlist(d){
+    const k=S.groups[d.g];const items=reorderItems().filter(x=>(x.p.supplier||'No supplier set')===k);
+    const o=S.order={sup:k,items};const total=items.reduce((a,x)=>a+x.i.cost,0);
+    const body=`<div class="inv"><div class="lg">${ico('leaf')}</div><h1>Purchase order</h1><div>${esc(st().name)} · ${dFmt(Date.now())}</div><div><b>Supplier:</b> ${esc(o.sup)}</div><table><tr><th>Item</th><th class="r">Qty</th><th class="r">Est. cost</th></tr>${items.map(x=>`<tr><td>${esc(x.p.name)}</td><td class="r">${x.i.qty}${x.p.unit?' '+esc(x.p.unit):''}</td><td class="r">${R(x.i.cost)}</td></tr>`).join('')}</table><div class="totals"><div class="g"><span>Estimated total</span><span>${R(total)}</span></div></div></div>`;
+    showDoc({title:'Order · '+k,body,text:orderText(o),pdfName:'order-'+k.replace(/[^a-z0-9]+/gi,'-')+'.pdf',pdf:()=>buildPdf(orderPdfData(o))});
+  },
+  docclose(){closeDoc()},
+  docmore(){$('#dvmore').classList.toggle('on')},
+  docprint(){if(S.doc)printHtml(S.doc.body)},
+  doccopy(){if(S.doc)copyText(S.doc.text)},
+  docpdf(){if(S.doc)sharePdf(S.doc.pdfName,S.doc.pdf())},
+  invopen(d){const v=S.invoices.find(x=>x.id===d.id);if(v)showInvoice(v)},
+  async invpaid(d){const v=S.invoices.find(x=>x.id===d.id);if(!v)return;await upd('invoices',v.id,{status:v.status==='paid'?'unpaid':'paid'});const n=S.invoices.find(x=>x.id===d.id);if(n)showInvoice(Object.assign({},n,{status:v.status==='paid'?'unpaid':'paid'}));render()},
+  invdel(d){ask('Delete this invoice?','invdelgo',d.id)},
+  async invdelgo(d){await del('invoices',d.id);closeModal();closeDoc();render()},
+  range(d){S.range=d.r;render()},
+  cat(d){S[d.k]=d.c;render()},
+  cats(){
+    const cs=catList(),cnt=c=>S.products.filter(p=>p.category===c).length;
+    openModal(`<h2>Categories</h2><p class="sub">Product types like Vapes, Gummies or Joints. Pick one on each product.</p>
+    <div class="row"><input id="c_new" placeholder="New category name"><button class="b nf" data-a="catadd">Add</button></div>
+    <div style="margin-top:10px">${cs.length?cs.map(c=>`<div class="prow"><div><b>${esc(c)}</b><div class="sub">${cnt(c)} product${cnt(c)===1?'':'s'}</div></div><button class="b red sm nf" data-a="catdel" data-c="${esc(c)}">Remove</button></div>`).join(''):'<div class="empty">No categories yet.</div>'}</div>
+    <div class="row" style="margin-top:12px"><button class="b alt" data-a="close">Done</button></div>`);
+  },
+  async catadd(){
+    const n=val('c_new').trim();if(!n){toast('Type a category name');return}
+    const cs=(st().cats||[]);if(!catList().some(c=>c.toLowerCase()===n.toLowerCase())){await saveSettings(Object.assign({},st(),{cats:cs.concat(n)}))}
+    toast('Added '+n);setTimeout(()=>A.cats(),400);
+  },
+  async catdel(d){
+    const used=S.products.filter(p=>p.category===d.c).length;
+    if(used){toast('Still used by '+used+' product(s) – change those first');return}
+    await saveSettings(Object.assign({},st(),{cats:(st().cats||[]).filter(c=>c!==d.c)}));
+    setTimeout(()=>A.cats(),400);
+  },
+  async saleinv(d){
+    const s=S.sales.find(x=>x.id===d.id);if(!s)return;
+    const v=await makeInvoice(s.items,s.total,s.pay,{},s.id,s.by||'');
+    showInvoice(v);render();
+  },
+  settings(){openModal(settingsForm())},
+  backup(){
+    const blob=new Blob([JSON.stringify({products:S.products,sales:S.sales,invoices:S.invoices,settings:S.settings})],{type:'application/json'});
+    const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='garden-route-green-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);toast('Backup saved to your downloads');
+  },
+  async ssave(){
+    const o=Object.assign({},st(),{name:val('s_name').trim()||DEF.name,address:val('s_address'),phone:val('s_phone'),email:val('s_email'),vatOn:document.getElementById('s_vatOn').checked,vatNo:val('s_vatNo'),bank:val('s_bank'),footer:val('s_footer'),staff:val('s_staff').split(/\n/).map(x=>x.trim()).filter(Boolean),cover:Math.max(1,num(val('s_cover'))||14)});
+    await saveSettings(o);closeModal();toast('Settings saved');render();
+  }
+};
+A.void=function(d){const s=S.sales.find(x=>x.id===d.id);if(!s)return;ask('Void this sale and put the items back in stock?','voidgo',d.id)};
+A.voidgo=async function(d){
+  const s=S.sales.find(x=>x.id===d.id);if(!s)return;
+  for(const i of s.items){const p=prod(i.pid);if(p)await upd('products',p.id,{stock:num(p.stock)+num(i.qty)})}
+  await del('sales',s.id);closeModal();toast('Sale voided');render();
+};
+
+async function doCheckout(withInv){
+  if(S.busy)return;
+  const lines=S.cart.filter(c=>num(c.qty)>0&&prod(c.pid));
+  if(!lines.length){toast('Cart is empty');return}
+  S.busy=true;
+  try{
+    const items=lines.map(c=>{const p=prod(c.pid);return{pid:c.pid,name:p.name,cat:p.category||'',unit:p.unit||'',qty:num(c.qty),price:num(c.price),cost:num(p.cost)}});
+    const total=items.reduce((a,i)=>a+i.qty*i.price,0);
+    const saleId=newId();
+    await put('sales',saleId,{ts:Date.now(),items,total,pay:S.pay,customer:S.cust.name.trim(),by:S.by.trim()});
+    for(const i of items){const p=prod(i.pid);if(p)await upd('products',p.id,{stock:Math.max(0,num(p.stock)-i.qty)})}
+    let inv=null;
+    if(withInv)inv=await makeInvoice(items,total,S.pay,S.cust,saleId,S.by.trim());
+    S.cart=[];S.cust={name:'',phone:'',address:''};
+    closeModal();render();
+    if(inv)showInvoice(inv);else toast('Sale complete – '+R(total));
+  }catch(e){toast('Something went wrong – please try again')}
+  S.busy=false;
+}
+
+document.addEventListener('click',e=>{
+  if(e.target.id==='modal'){closeModal();return}
+  const b=e.target.closest('[data-a]');if(!b)return;
+  const f=A[b.dataset.a];if(!f)return;
+  Promise.resolve().then(()=>f(b.dataset)).catch(()=>toast('Something went wrong – please try again'));
+});
+document.addEventListener('change',e=>{
+  if(e.target.id!=='restore_file'||!e.target.files[0])return;
+  const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.products))throw 0;S.products=d.products;S.sales=d.sales||[];S.invoices=d.invoices||[];S.settings=d.settings||{};persist();closeModal();render();toast('Backup restored')}catch(x){toast('That file is not a Garden Route Green backup')}};
+  r.readAsText(e.target.files[0]);
+});
+document.addEventListener('input',e=>{
+  const t=e.target,k=t.dataset&&t.dataset.in;if(!k)return;
+  if(k==='q'){S.q=t.value;render()}
+  else if(k==='q2'){S.q2=t.value;render()}
+  else if(k==='cqty'||k==='cprice'){const c=S.cart.find(x=>x.pid===t.dataset.id);if(c){if(k==='cqty')c.qty=num(t.value);else c.price=num(t.value);refreshCart()}}
+  else if(k==='pay'){S.pay=t.value}
+  else if(k==='by'){S.by=t.value}
+  else if(k.indexOf('cust_')===0){S.cust[k.slice(5)]=t.value}
+});
+
+/* ---------- start ---------- */
+$('#hdr').innerHTML=`<div class="brand"><span class="logo">${ico('leaf')}</span><div><h1>Garden Route Green</h1><small>Sales, stock and invoices</small></div></div><button class="iconbtn" data-a="settings" aria-label="Settings">${ico('sliders')}</button>`;
+render();
+loadLocal();
+S.loaded={products:1,sales:1,invoices:1};
+render();
+</script>
+</body>
+</html>
