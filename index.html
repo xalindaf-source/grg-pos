@@ -489,9 +489,8 @@ function printHtml(html){
   const mark=()=>{ok=true};
   window.addEventListener('beforeprint',mark,{once:true});
   const mq=window.matchMedia&&window.matchMedia('print');if(mq&&mq.addEventListener)mq.addEventListener('change',mark,{once:true});
-  window.addEventListener('afterprint',()=>{pa.innerHTML=''},{once:true});
   try{window.print()}catch(e){}
-  setTimeout(()=>{window.removeEventListener('beforeprint',mark);if(!ok){pa.innerHTML='';toast('Could not open printing. Use More > Save PDF instead.')}},1200);
+  setTimeout(()=>{window.removeEventListener('beforeprint',mark);if(!ok){toast('Could not open printing. Use More > Save PDF instead.')}},1200);
 }
 const waLink=t=>'https://wa.me/?text='+encodeURIComponent(t);
 function invText(v){
