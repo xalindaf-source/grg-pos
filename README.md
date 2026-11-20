@@ -7,7 +7,7 @@ The owner can also manage team access, edit shop settings and category lists, ba
 ## Set up the shared shop
 
 1. Open the current live app on the browser that holds your most complete records. Go to **Settings → Back up data**. The previous app saved locally per browser. If several devices have different records, export each and reconcile the backups before restoring. Keep the original exports.
-2. Use a Supabase project for this shop. Run [setup.sql](supabase/setup.sql) in its SQL Editor. In Authentication settings, turn off public sign-ups and anonymous sign-ins.
+2. Use a Supabase project for this shop. Run [setup.sql](setup.sql) in its SQL Editor. In Authentication settings, turn off public sign-ups and anonymous sign-ins.
 3. In **Authentication → Users**, create or invite the owner's email and the four employee emails. Each account needs a confirmed email and its own password. Set or reset passwords through Supabase Auth. In SQL Editor, run the following with your confirmed owner email and display name. The query should return one row. Verify that it is your account before sharing the app.
    
    ```sql
