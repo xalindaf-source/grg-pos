@@ -260,7 +260,15 @@ function catChips(key){
   const cur=S[key];
   return '<div class="catbar"><button class="'+(cur?'':'on')+'" data-a="cat" data-k="'+key+'" data-c="">All</button>'+cs.map(c=>'<button class="'+(cur===c?'on':'')+'" data-a="cat" data-k="'+key+'" data-c="'+esc(c)+'">'+esc(c)+'</button>').join('')+'</div>';
 }
-function cartTotal(){return S.cart.reduce((a,c)=>a+num(c.qty)*num(c.price),0)}
+function pairDiscount(qty, price, pairPrice){
+  return pairPrice==null ? 0 : Math.floor(Math.max(0,num(qty))/2) *
+    Math.max(0,2*Math.round(num(price)*100)-Math.round(num(pairPrice)*100))/100;
+}
+const cartDiscount=c=>pairDiscount(c.qty,c.price,prod(c.pid)?.pairPrice);
+const lineTotal=i=>(Math.round(num(i.qty)*num(i.price)*100)-Math.round(num(i.discount)*100))/100;
+const cartLineTotal=c=>lineTotal({...c,discount:cartDiscount(c)});
+const discountLabel=i=>num(i.discount)>0?' (Take Two −'+R(i.discount)+')':'';
+function cartTotal(){return S.cart.reduce((a,c)=>a+cartLineTotal(c),0)}
 function cartSheet(){
   const n=S.cart.reduce((a,c)=>a+num(c.qty),0);
   let h=`<div class="shd"><h2>Cart <span class="sub">· ${S.cart.length} item${S.cart.length===1?'':'s'}</span></h2><button class="iconbtn2" data-a="close" aria-label="Close">${ico('x')}</button></div>`;
@@ -269,7 +277,7 @@ function cartSheet(){
       <input id="cqty_${c.pid}" type="number" inputmode="decimal" data-in="cqty" data-id="${c.pid}" value="${c.qty}">
       <button data-a="cq" data-id="${c.pid}" data-d="1" aria-label="More">${ico('plus')}</button>
       <input class="pr" id="cprice_${c.pid}" type="number" inputmode="decimal" step="0.01" data-in="cprice" data-id="${c.pid}" value="${c.price}">
-      <b id="la_${c.pid}">${R(c.qty*c.price)}</b>
+      <b id="la_${c.pid}">${R(cartLineTotal(c))+(cartDiscount(c)?' · Save '+R(cartDiscount(c)):'')}</b>
       <button class="rm" data-a="crm" data-id="${c.pid}" aria-label="Remove">${ico('x')}</button></div></div>`}).join('');
     h+=`<div class="tot"><span>Total</span><b id="ctot">${R(cartTotal())}</b></div>
       <div class="two"><div><label>Payment</label><select data-in="pay">${['Cash','Card','EFT','On account'].map(x=>`<option${S.pay===x?' selected':''}>${x}</option>`).join('')}</select></div>
@@ -337,12 +345,12 @@ function report(){
   const sales=S.sales.filter(s=>s.ts>=from).sort((a,b)=>b.ts-a.ts);
   const rev=sales.reduce((a,s)=>a+num(s.total),0);
   const cogs=sales.reduce((a,s)=>a+(s.items||[]).reduce((b,i)=>b+num(i.qty)*num(i.cost),0),0);
-  const top={};sales.forEach(s=>(s.items||[]).forEach(i=>{const t=top[i.pid]||(top[i.pid]={name:i.name,qty:0,rev:0});t.qty+=num(i.qty);t.rev+=num(i.qty)*num(i.price)}));
+  const top={};sales.forEach(s=>(s.items||[]).forEach(i=>{const t=top[i.pid]||(top[i.pid]={name:i.name,qty:0,rev:0});t.qty+=num(i.qty);t.rev+=lineTotal(i)}));
   const tl=Object.values(top).sort((a,b)=>b.rev-a.rev).slice(0,5);
   const chip=(k,l)=>`<button class="${S.range===k?'on':''}" data-a="range" data-r="${k}">${l}</button>`;
   let h=`<div class="chips">${chip('today','Today')}${chip('week','7 days')}${chip('month','30 days')}</div>
   <div class="kpis"><div class="kpi"><small>Sales</small><b>${R(rev)}</b></div><div class="kpi"><small>Est. profit</small><b>${R(rev-cogs)}</b></div><div class="kpi"><small>No. of sales</small><b>${sales.length}</b></div><div class="kpi"><small>Cost of goods</small><b>${R(cogs)}</b></div></div>`;
-  const bc={};sales.forEach(s=>(s.items||[]).forEach(i=>{const k=i.cat||(prod(i.pid)||{}).category||'Uncategorised';const t=bc[k]||(bc[k]={qty:0,rev:0});t.qty+=num(i.qty);t.rev+=num(i.qty)*num(i.price)}));
+  const bc={};sales.forEach(s=>(s.items||[]).forEach(i=>{const k=i.cat||(prod(i.pid)||{}).category||'Uncategorised';const t=bc[k]||(bc[k]={qty:0,rev:0});t.qty+=num(i.qty);t.rev+=lineTotal(i)}));
   const bp={};sales.forEach(x=>{const k=x.by||'Not recorded';const t=bp[k]||(bp[k]={n:0,rev:0});t.n++;t.rev+=num(x.total)});
   const pl=Object.entries(bp).sort((a,b)=>b[1].rev-a[1].rev);
   if(pl.length>1||(pl.length===1&&pl[0][0]!=='Not recorded'))h+='<section class="card"><h3>Sales by salesperson</h3>'+pl.map(([k,t])=>`<div class="prow"><div>${esc(k)}<div class="sub">${t.n} sale${t.n===1?'':'s'}</div></div><b>${R(t.rev)}</b></div>`).join('')+'</section>';
@@ -370,7 +378,7 @@ function drawNav(n){
   $('#nav').innerHTML=TABS.map(t=>`<button class="${S.tab===t[0]?'on':''}" data-a="tab" data-t="${t[0]}">${ico(t[1])}<span>${t[2]}</span>${t[0]==='reorder'&&n?`<span class="bdg">${n}</span>`:''}</button>`).join('');
 }
 function refreshCart(){
-  S.cart.forEach(c=>{const e=document.getElementById('la_'+c.pid);if(e)e.textContent=R(c.qty*c.price)});
+  S.cart.forEach(c=>{const e=document.getElementById('la_'+c.pid);if(e)e.textContent=R(cartLineTotal(c))+(cartDiscount(c)?' · Save '+R(cartDiscount(c)):'')});
   const t=document.getElementById('ctot');if(t)t.textContent=R(cartTotal());drawCartBar();
 }
 
@@ -388,7 +396,7 @@ function invBody(v){
   <div class="meta"><div style="font-size:18px;font-weight:700">${v.vatOn?'TAX INVOICE':'INVOICE'}</div><div><b>${esc(v.no)}</b></div><div>${dFmt(v.ts)}</div>${v.by?`<div>Served by: ${esc(v.by)}</div>`:''}<div class="stamp ${v.status==='paid'?'':'u'}">${v.status==='paid'?'PAID':'UNPAID'}</div></div></div>
   ${c.name||c.address||c.phone?`<div><b>Bill to</b><br>${esc(c.name)}<br>${esc(c.address).replace(/\n/g,'<br>')}${c.phone?'<br>'+esc(c.phone):''}</div>`:''}
   <table><tr><th>Description</th><th class="r">Qty</th><th class="r">Unit price</th><th class="r">Amount</th></tr>
-  ${(v.items||[]).map(i=>`<tr><td>${esc(i.name)}</td><td class="r">${i.qty}</td><td class="r">${R(i.price)}</td><td class="r">${R(i.qty*i.price)}</td></tr>`).join('')}</table>
+  ${(v.items||[]).map(i=>`<tr><td>${esc(i.name)+discountLabel(i)}</td><td class="r">${i.qty}</td><td class="r">${R(i.price)}</td><td class="r">${R(lineTotal(i))}</td></tr>`).join('')}</table>
   <div class="totals">${v.vatOn?`<div><span>Subtotal (excl. VAT)</span><span>${R(subt)}</span></div><div><span>VAT 15%</span><span>${R(vat)}</span></div>`:''}<div class="g"><span>Total${v.vatOn?' (incl. VAT)':''}</span><span>${R(v.total)}</span></div></div>
   ${b.bank?`<div class="foot"><b>Banking details</b>\n${esc(b.bank)}</div>`:''}<div class="foot">${esc(b.footer)}</div></div>`;
 }
@@ -462,7 +470,7 @@ function invPdfData(v){
     meta:[v.vatOn?'TAX INVOICE':'INVOICE',v.no,dFmt(v.ts)].concat(v.by?['Served by: '+v.by]:[],[v.status==='paid'?'PAID':'UNPAID']),
     billto:[c.name,c.address,c.phone].filter(Boolean),
     cols:[{t:'Description',x:L0+2,a:'l',w:92},{t:'Qty',x:128,a:'r'},{t:'Unit price',x:160,a:'r'},{t:'Amount',x:192,a:'r'}],
-    rows:(v.items||[]).map(i=>[i.name,String(i.qty),R(i.price),R(i.qty*i.price)]),
+    rows:(v.items||[]).map(i=>[i.name+discountLabel(i),String(i.qty),R(i.price),R(lineTotal(i))]),
     totals:(v.vatOn?[['Subtotal (excl. VAT)',R(subt)],['VAT 15%',R(vat)]]:[]).concat([['Total'+(v.vatOn?' (incl. VAT)':''),R(v.total)]]),
     foot:[].concat(b.bank?['Banking details:\n'+b.bank]:[],b.footer?[b.footer]:[])};
 }
@@ -495,7 +503,7 @@ function printHtml(html){
 const waLink=t=>'https://wa.me/?text='+encodeURIComponent(t);
 function invText(v){
   const c=v.customer||{},b=v.biz||{};
-  return `${v.vatOn?'TAX INVOICE':'INVOICE'} ${v.no}\n${b.name}\nDate: ${dFmt(v.ts)}\nBill to: ${c.name||''}\n\n`+(v.items||[]).map(i=>`${i.name}  ${i.qty} x ${R(i.price)} = ${R(i.qty*i.price)}`).join('\n')+`\n\nTOTAL: ${R(v.total)}${v.vatOn?' (incl. VAT)':''}\nStatus: ${v.status==='paid'?'PAID':'UNPAID'}${b.bank?'\n\nBanking details:\n'+b.bank:''}`;
+  return `${v.vatOn?'TAX INVOICE':'INVOICE'} ${v.no}\n${b.name}\nDate: ${dFmt(v.ts)}\nBill to: ${c.name||''}\n\n`+(v.items||[]).map(i=>`${i.name}  ${i.qty} x ${R(i.price)} = ${R(lineTotal(i))}${discountLabel(i)}`).join('\n')+`\n\nTOTAL: ${R(v.total)}${v.vatOn?' (incl. VAT)':''}\nStatus: ${v.status==='paid'?'PAID':'UNPAID'}${b.bank?'\n\nBanking details:\n'+b.bank:''}`;
 }
 async function copyText(t){
   try{await navigator.clipboard.writeText(t);toast('Copied')}
@@ -535,6 +543,7 @@ function prodForm(p){
   <label>Name</label><input id="f_name" value="${esc(p.name)}">
   <label>Category / product type</label><input id="f_cat" list="catopts" placeholder="e.g. Vapes, Gummies, Joints" value="${esc(p.category)}">
   <datalist id="catopts">${[...new Set(['Vapes','Gummies','Joints'].concat(catList()))].map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+  <label for="f_pair">Take Two total price (R)</label><input id="f_pair" type="number" min="0.01" step="0.01" placeholder="Leave blank for no special" value="${esc(p.pairPrice??'')}">
   <div class="two"><div><label>Selling price (R)</label><input id="f_price" type="number" inputmode="decimal" step="0.01" value="${p.price!=null?p.price:''}"></div>
   <div><label>Cost price (R)</label><input id="f_cost" type="number" inputmode="decimal" step="0.01" value="${p.cost!=null?p.cost:''}"></div></div>
   <div class="two"><div><label>In stock now</label><input id="f_stock" type="number" inputmode="decimal" value="${p.stock!=null?p.stock:''}"></div>
@@ -576,7 +585,10 @@ const A={
   pedit(d){openModal(prodForm(prod(d.id)))},
   async psave(d){
     const name=val('f_name').trim();if(!name){toast('Enter a product name');return}
-    const o={name,category:val('f_cat').trim(),price:num(val('f_price')),cost:num(val('f_cost')),stock:num(val('f_stock')),min:num(val('f_min')),unit:val('f_unit').trim(),pack:num(val('f_pack'))||1,supplier:val('f_supplier').trim()};
+    const price=num(val('f_price')), pairInput=val('f_pair');
+    const pairPrice=pairInput===''?null:num(pairInput);
+    if(pairPrice!==null&&(pairPrice<=0||pairPrice>=2*price)){toast('Enter a Take Two price below the total for two regular items');return}
+    const o={name,pairPrice,category:val('f_cat').trim(),price,cost:num(val('f_cost')),stock:num(val('f_stock')),min:num(val('f_min')),unit:val('f_unit').trim(),pack:num(val('f_pack'))||1,supplier:val('f_supplier').trim()};
     await put('products',d.id||newId(),o);closeModal();toast('Saved');render();
   },
   pdelask(d){ask('Delete this product? Past sales keep their history.','pdel',d.id)},
@@ -666,8 +678,8 @@ async function doCheckout(withInv){
   if(!lines.length){toast('Cart is empty');return}
   S.busy=true;
   try{
-    const items=lines.map(c=>{const p=prod(c.pid);return{pid:c.pid,name:p.name,cat:p.category||'',unit:p.unit||'',qty:num(c.qty),price:num(c.price),cost:num(p.cost)}});
-    const total=items.reduce((a,i)=>a+i.qty*i.price,0);
+    const items=lines.map(c=>{const p=prod(c.pid);return{pid:c.pid,name:p.name,cat:p.category||'',unit:p.unit||'',qty:num(c.qty),price:num(c.price),discount:cartDiscount(c),cost:num(p.cost)}});
+    const total=items.reduce((a,i)=>a+lineTotal(i),0);
     const saleId=newId();
     await put('sales',saleId,{ts:Date.now(),items,total,pay:S.pay,customer:S.cust.name.trim(),by:S.by.trim()});
     for(const i of items){const p=prod(i.pid);if(p)await upd('products',p.id,{stock:Math.max(0,num(p.stock)-i.qty)})}
