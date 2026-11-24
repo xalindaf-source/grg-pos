@@ -264,7 +264,22 @@ function pairDiscount(qty, price, pairPrice){
   return pairPrice==null ? 0 : Math.floor(Math.max(0,num(qty))/2) *
     Math.max(0,2*Math.round(num(price)*100)-Math.round(num(pairPrice)*100))/100;
 }
-const cartDiscount=c=>pairDiscount(c.qty,c.price,prod(c.pid)?.pairPrice);
+function cartDiscount(c){
+  const pairPrice=prod(c.pid)?.pairPrice;
+  let previous=0;
+  for(const line of S.cart){
+    if(line===c)break;
+    if(line.pid===c.pid&&line.price===c.price)previous+=Math.floor(Math.max(0,num(line.qty)));
+  }
+  return pairDiscount(previous+Math.floor(Math.max(0,num(c.qty))),c.price,pairPrice)-
+    pairDiscount(previous,c.price,pairPrice);
+}
+function addCartLine(p,flavour=''){
+  const line=S.cart.find(c=>c.pid===p.id&&c.flavour===flavour);
+  if(line)line.qty=num(line.qty)+1;
+  else S.cart.push({id:newId(),pid:p.id,flavour,qty:1,price:num(p.price)});
+  render();
+}
 const lineTotal=i=>(Math.round(num(i.qty)*num(i.price)*100)-Math.round(num(i.discount)*100))/100;
 const cartLineTotal=c=>lineTotal({...c,discount:cartDiscount(c)});
 const discountLabel=i=>num(i.discount)>0?' (Take Two −'+R(i.discount)+')':'';
@@ -272,13 +287,13 @@ function cartTotal(){return S.cart.reduce((a,c)=>a+cartLineTotal(c),0)}
 function cartSheet(){
   const n=S.cart.reduce((a,c)=>a+num(c.qty),0);
   let h=`<div class="shd"><h2>Cart <span class="sub">· ${S.cart.length} item${S.cart.length===1?'':'s'}</span></h2><button class="iconbtn2" data-a="close" aria-label="Close">${ico('x')}</button></div>`;
-    h+=S.cart.map(c=>{const p=prod(c.pid)||{name:'?'};return `<div class="line"><div class="ln">${esc(p.name)}</div><div></div>
-      <div class="ctl"><button data-a="cq" data-id="${c.pid}" data-d="-1" aria-label="Less">${ico('minus')}</button>
-      <input id="cqty_${c.pid}" type="number" inputmode="decimal" data-in="cqty" data-id="${c.pid}" value="${c.qty}">
-      <button data-a="cq" data-id="${c.pid}" data-d="1" aria-label="More">${ico('plus')}</button>
-      <input class="pr" id="cprice_${c.pid}" type="number" inputmode="decimal" step="0.01" data-in="cprice" data-id="${c.pid}" value="${c.price}">
-      <b id="la_${c.pid}">${R(cartLineTotal(c))+(cartDiscount(c)?' · Save '+R(cartDiscount(c)):'')}</b>
-      <button class="rm" data-a="crm" data-id="${c.pid}" aria-label="Remove">${ico('x')}</button></div></div>`}).join('');
+    h+=S.cart.map(c=>{const p=prod(c.pid)||{name:'?'};return `<div class="line"><div class="ln">${esc(p.name)}${c.flavour?' · '+esc(c.flavour):''}</div><div></div>
+      <div class="ctl"><button data-a="cq" data-id="${c.id}" data-d="-1" aria-label="Less">${ico('minus')}</button>
+      <input id="cqty_${c.id}" type="number" inputmode="decimal" data-in="cqty" data-id="${c.id}" value="${c.qty}">
+      <button data-a="cq" data-id="${c.id}" data-d="1" aria-label="More">${ico('plus')}</button>
+      <input class="pr" id="cprice_${c.id}" type="number" inputmode="decimal" step="0.01" data-in="cprice" data-id="${c.id}" value="${c.price}">
+      <b id="la_${c.id}">${R(cartLineTotal(c))+(cartDiscount(c)?' · Save '+R(cartDiscount(c)):'')}</b>
+      <button class="rm" data-a="crm" data-id="${c.id}" aria-label="Remove">${ico('x')}</button></div></div>`}).join('');
     h+=`<div class="tot"><span>Total</span><b id="ctot">${R(cartTotal())}</b></div>
       <div class="two"><div><label>Payment</label><select data-in="pay">${['Cash','Card','EFT','On account'].map(x=>`<option${S.pay===x?' selected':''}>${x}</option>`).join('')}</select></div>
       <div><label>Sold by</label>${staffList().length?`<select data-in="by"><option value="">Choose…</option>${staffList().map(n=>`<option${S.by===n?' selected':''}>${esc(n)}</option>`).join('')}</select>`:`<input data-in="by" placeholder="Salesperson" value="${esc(S.by)}">`}</div></div>
@@ -378,7 +393,7 @@ function drawNav(n){
   $('#nav').innerHTML=TABS.map(t=>`<button class="${S.tab===t[0]?'on':''}" data-a="tab" data-t="${t[0]}">${ico(t[1])}<span>${t[2]}</span>${t[0]==='reorder'&&n?`<span class="bdg">${n}</span>`:''}</button>`).join('');
 }
 function refreshCart(){
-  S.cart.forEach(c=>{const e=document.getElementById('la_'+c.pid);if(e)e.textContent=R(cartLineTotal(c))+(cartDiscount(c)?' · Save '+R(cartDiscount(c)):'')});
+  S.cart.forEach(c=>{const e=document.getElementById('la_'+c.id);if(e)e.textContent=R(cartLineTotal(c))+(cartDiscount(c)?' · Save '+R(cartDiscount(c)):'')});
   const t=document.getElementById('ctot');if(t)t.textContent=R(cartTotal());drawCartBar();
 }
 
@@ -543,6 +558,7 @@ function prodForm(p){
   <label>Name</label><input id="f_name" value="${esc(p.name)}">
   <label>Category / product type</label><input id="f_cat" list="catopts" placeholder="e.g. Vapes, Gummies, Joints" value="${esc(p.category)}">
   <datalist id="catopts">${[...new Set(['Vapes','Gummies','Joints'].concat(catList()))].map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+  <label for="f_flavours">Flavours (one per line)</label><textarea id="f_flavours" rows="3" placeholder="Leave blank for no flavour choices">${esc((p.flavours||[]).join('\n'))}</textarea>
   <label for="f_pair">Take Two total price (R)</label><input id="f_pair" type="number" min="0.01" step="0.01" placeholder="Leave blank for no special" value="${esc(p.pairPrice??'')}">
   <div class="two"><div><label>Selling price (R)</label><input id="f_price" type="number" inputmode="decimal" step="0.01" value="${p.price!=null?p.price:''}"></div>
   <div><label>Cost price (R)</label><input id="f_cost" type="number" inputmode="decimal" step="0.01" value="${p.cost!=null?p.cost:''}"></div></div>
@@ -575,9 +591,18 @@ const A={
   tab(d){S.tab=d.t;render();scrollTo(0,0)},
   close(){closeModal()},
   cartopen(){if(!S.cart.length)return;S.cartOpen=true;openModal(cartSheet());drawCartBar()},
-  add(d){const p=prod(d.id);if(!p)return;const c=S.cart.find(x=>x.pid===d.id);if(c)c.qty=num(c.qty)+1;else S.cart.push({pid:d.id,qty:1,price:num(p.price)});render()},
-  cq(d){const c=S.cart.find(x=>x.pid===d.id);if(!c)return;c.qty=Math.max(0,num(c.qty)+num(d.d));if(c.qty<=0)S.cart=S.cart.filter(x=>x!==c);cartChanged()},
-  crm(d){S.cart=S.cart.filter(x=>x.pid!==d.id);cartChanged()},
+  add(d){
+    const p=prod(d.id);if(!p)return;
+    if(!p.flavours?.length){addCartLine(p);return}
+    openModal(`<h2>Choose a flavour</h2><p>${esc(p.name)}</p><div class="row" style="flex-wrap:wrap">${p.flavours.map((flavour,i)=>`<button class="b alt" data-a="addflavour" data-id="${esc(p.id)}" data-option="${i}">${esc(flavour)}</button>`).join('')}</div><button class="b alt" data-a="close">Cancel</button>`);
+  },
+  addflavour(d){
+    const p=prod(d.id), flavour=p?.flavours?.[Number(d.option)];
+    if(!flavour)return;
+    closeModal();addCartLine(p,flavour);
+  },
+  cq(d){const c=S.cart.find(x=>x.id===d.id);if(!c)return;c.qty=Math.max(0,num(c.qty)+num(d.d));if(c.qty<=0)S.cart=S.cart.filter(x=>x!==c);cartChanged()},
+  crm(d){S.cart=S.cart.filter(x=>x.id!==d.id);cartChanged()},
   clear(){S.cart=[];S.cust={name:'',phone:'',address:''};cartChanged()},
   async checkout(){await doCheckout(false)},
   async checkoutinv(){await doCheckout(true)},
@@ -588,7 +613,8 @@ const A={
     const price=num(val('f_price')), pairInput=val('f_pair');
     const pairPrice=pairInput===''?null:num(pairInput);
     if(pairPrice!==null&&(pairPrice<=0||pairPrice>=2*price)){toast('Enter a Take Two price below the total for two regular items');return}
-    const o={name,pairPrice,category:val('f_cat').trim(),price,cost:num(val('f_cost')),stock:num(val('f_stock')),min:num(val('f_min')),unit:val('f_unit').trim(),pack:num(val('f_pack'))||1,supplier:val('f_supplier').trim()};
+    const flavours=[...new Set(val('f_flavours').split(/\r?\n/).map(x=>x.trim()).filter(Boolean))];
+    const o={name,pairPrice,flavours,category:val('f_cat').trim(),price,cost:num(val('f_cost')),stock:num(val('f_stock')),min:num(val('f_min')),unit:val('f_unit').trim(),pack:num(val('f_pack'))||1,supplier:val('f_supplier').trim()};
     await put('products',d.id||newId(),o);closeModal();toast('Saved');render();
   },
   pdelask(d){ask('Delete this product? Past sales keep their history.','pdel',d.id)},
@@ -678,7 +704,7 @@ async function doCheckout(withInv){
   if(!lines.length){toast('Cart is empty');return}
   S.busy=true;
   try{
-    const items=lines.map(c=>{const p=prod(c.pid);return{pid:c.pid,name:p.name,cat:p.category||'',unit:p.unit||'',qty:num(c.qty),price:num(c.price),discount:cartDiscount(c),cost:num(p.cost)}});
+    const items=lines.map(c=>{const p=prod(c.pid);return{pid:c.pid,name:c.flavour?p.name+' · '+c.flavour:p.name,flavour:c.flavour,cat:p.category||'',unit:p.unit||'',qty:num(c.qty),price:num(c.price),discount:cartDiscount(c),cost:num(p.cost)}});
     const total=items.reduce((a,i)=>a+lineTotal(i),0);
     const saleId=newId();
     await put('sales',saleId,{ts:Date.now(),items,total,pay:S.pay,customer:S.cust.name.trim(),by:S.by.trim()});
@@ -708,7 +734,7 @@ document.addEventListener('input',e=>{
   const t=e.target,k=t.dataset&&t.dataset.in;if(!k)return;
   if(k==='q'){S.q=t.value;render()}
   else if(k==='q2'){S.q2=t.value;render()}
-  else if(k==='cqty'||k==='cprice'){const c=S.cart.find(x=>x.pid===t.dataset.id);if(c){if(k==='cqty')c.qty=num(t.value);else c.price=num(t.value);refreshCart()}}
+  else if(k==='cqty'||k==='cprice'){const c=S.cart.find(x=>x.id===t.dataset.id);if(c){if(k==='cqty')c.qty=num(t.value);else c.price=num(t.value);refreshCart()}}
   else if(k==='pay'){S.pay=t.value}
   else if(k==='by'){S.by=t.value}
   else if(k.indexOf('cust_')===0){S.cust[k.slice(5)]=t.value}
