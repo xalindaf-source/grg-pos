@@ -274,6 +274,18 @@ function cartDiscount(c){
   return pairDiscount(previous+Math.floor(Math.max(0,num(c.qty))),c.price,pairPrice)-
     pairDiscount(previous,c.price,pairPrice);
 }
+const flavourCount=(p,name)=>p.flavourStock?.find(row=>row.name===name)?.qty??0;
+function stockPatch(p,name,delta){
+  const stock=Math.max(0,num(p.stock)+delta);
+  if(!p.flavourStock||!p.flavours.includes(name))return {stock};
+  return {stock,flavourStock:p.flavours.map(flavour=>({
+    name:flavour,qty:flavourCount(p,flavour)+(flavour===name?delta:0)
+  }))};
+}
+const flavourNames=value=>[...new Set(value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean))];
+const countFields=rows=>rows.map(({name,qty},i)=>
+  `<label for="f_flavour_count_${i}">${esc(name)} in stock</label><input id="f_flavour_count_${i}" data-flavour-count="${esc(name)}" type="number" min="0" step="1" inputmode="numeric" value="${esc(qty)}">`
+).join('');
 function addCartLine(p,flavour=''){
   const line=S.cart.find(c=>c.pid===p.id&&c.flavour===flavour);
   if(line)line.qty=num(line.qty)+1;
@@ -328,7 +340,7 @@ function stock(){
   <div class="row" style="margin-bottom:10px"><button class="b" data-a="pnew">${ico('plus')} Add product</button><button class="b alt" data-a="pimport">${ico('upload')} Import</button><button class="b alt" data-a="cats">${ico('tag')} Categories</button></div>
   ${catChips('cat2')}<input class="search" id="q2" data-in="q2" placeholder="Search stock, category or supplier" value="${esc(S.q2)}">`;
   if(!list.length)return h+'<div class="empty">Nothing here yet.</div>';
-  h+='<section class="card">'+list.map(p=>{const i=info(p);return `<div class="prow st-${i.s}"><div><b>${esc(p.name)}</b><div class="sub">${p.category?'<b>'+esc(p.category)+'</b> · ':''}${R(p.price)} sell · ${R(p.cost)} cost${p.supplier?' · '+esc(p.supplier):''}</div><div class="sub">Reorder at ${i.min}</div></div>
+  h+='<section class="card">'+list.map(p=>{const i=info(p);return `<div class="prow st-${i.s}"><div><b>${esc(p.name)}</b><div class="sub">${p.category?'<b>'+esc(p.category)+'</b> · ':''}${R(p.price)} sell · ${R(p.cost)} cost${p.supplier?' · '+esc(p.supplier):''}</div><div class="sub">Reorder at ${i.min}</div>${p.flavours?.length?`<div class="sub">${p.flavourStock?p.flavours.map(name=>esc(name)+' '+flavourCount(p,name)).join(' · '):'Edit product to set flavour counts'}${p.flavourStock&&num(p.stock)>p.flavourStock.reduce((n,row)=>n+row.qty,0)?' · Unassigned '+(num(p.stock)-p.flavourStock.reduce((n,row)=>n+row.qty,0)):''}</div>`:''}</div>
     <div class="right"><span class="chip ${i.s}">${i.s==='ok'?'':LBL[i.s]+' · '}${i.stock}${p.unit?' '+esc(p.unit):''}</span><div class="row"><button class="b alt sm nf" data-a="recv" data-id="${p.id}">${ico('plus')} Receive</button><button class="b alt sm nf" data-a="pedit" data-id="${p.id}">Edit</button></div></div></div>`}).join('')+'</section>';
   return h;
 }
@@ -559,10 +571,12 @@ function prodForm(p){
   <label>Category / product type</label><input id="f_cat" list="catopts" placeholder="e.g. Vapes, Gummies, Joints" value="${esc(p.category)}">
   <datalist id="catopts">${[...new Set(['Vapes','Gummies','Joints'].concat(catList()))].map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
   <label for="f_flavours">Flavours (one per line)</label><textarea id="f_flavours" rows="3" placeholder="Leave blank for no flavour choices">${esc((p.flavours||[]).join('\n'))}</textarea>
+  <div id="f_flavour_counts">${countFields((p.flavours||[]).map(name=>({name,qty:p.flavourStock?flavourCount(p,name):''})))}</div>
+  <p class="sub" id="f_flavour_help" ${p.flavours?.length?'':'hidden'}>Enter the count for each flavour. Their sum becomes the total stock.</p>
   <label for="f_pair">Take Two total price (R)</label><input id="f_pair" type="number" min="0.01" step="0.01" placeholder="Leave blank for no special" value="${esc(p.pairPrice??'')}">
   <div class="two"><div><label>Selling price (R)</label><input id="f_price" type="number" inputmode="decimal" step="0.01" value="${p.price!=null?p.price:''}"></div>
   <div><label>Cost price (R)</label><input id="f_cost" type="number" inputmode="decimal" step="0.01" value="${p.cost!=null?p.cost:''}"></div></div>
-  <div class="two"><div><label>In stock now</label><input id="f_stock" type="number" inputmode="decimal" value="${p.stock!=null?p.stock:''}"></div>
+  <div class="two"><div id="f_stock_group" ${p.flavours?.length?'hidden':''}><label>In stock now</label><input id="f_stock" type="number" inputmode="decimal" value="${p.stock!=null?p.stock:''}"></div>
   <div><label>Reorder when stock reaches</label><input id="f_min" type="number" inputmode="decimal" value="${p.min!=null?p.min:''}"></div></div>
   <div class="two"><div><label>Unit (e.g. each, box, kg)</label><input id="f_unit" value="${esc(p.unit)}"></div>
   <div><label>Order in packs of</label><input id="f_pack" type="number" inputmode="decimal" placeholder="1" value="${p.pack||''}"></div></div>
@@ -594,11 +608,12 @@ const A={
   add(d){
     const p=prod(d.id);if(!p)return;
     if(!p.flavours?.length){addCartLine(p);return}
-    openModal(`<h2>Choose a flavour</h2><p>${esc(p.name)}</p><div class="row" style="flex-wrap:wrap">${p.flavours.map((flavour,i)=>`<button class="b alt" data-a="addflavour" data-id="${esc(p.id)}" data-option="${i}">${esc(flavour)}</button>`).join('')}</div><button class="b alt" data-a="close">Cancel</button>`);
+    openModal(`<h2>Choose a flavour</h2><p>${esc(p.name)}</p><div class="row" style="flex-wrap:wrap">${p.flavours.map((flavour,i)=>`<button class="b alt" data-a="addflavour" data-id="${esc(p.id)}" data-option="${i}" ${p.flavourStock&&flavourCount(p,flavour)===0?'disabled':''}>${esc(flavour)}${p.flavourStock?' · '+flavourCount(p,flavour)+' left':''}</button>`).join('')}</div><button class="b alt" data-a="close">Cancel</button>`);
   },
   addflavour(d){
     const p=prod(d.id), flavour=p?.flavours?.[Number(d.option)];
     if(!flavour)return;
+    if(p.flavourStock&&flavourCount(p,flavour)<=num(S.cart.find(c=>c.pid===p.id&&c.flavour===flavour)?.qty)){toast('No more '+flavour+' in stock');return}
     closeModal();addCartLine(p,flavour);
   },
   cq(d){const c=S.cart.find(x=>x.id===d.id);if(!c)return;c.qty=Math.max(0,num(c.qty)+num(d.d));if(c.qty<=0)S.cart=S.cart.filter(x=>x!==c);cartChanged()},
@@ -613,8 +628,11 @@ const A={
     const price=num(val('f_price')), pairInput=val('f_pair');
     const pairPrice=pairInput===''?null:num(pairInput);
     if(pairPrice!==null&&(pairPrice<=0||pairPrice>=2*price)){toast('Enter a Take Two price below the total for two regular items');return}
-    const flavours=[...new Set(val('f_flavours').split(/\r?\n/).map(x=>x.trim()).filter(Boolean))];
-    const o={name,pairPrice,flavours,category:val('f_cat').trim(),price,cost:num(val('f_cost')),stock:num(val('f_stock')),min:num(val('f_min')),unit:val('f_unit').trim(),pack:num(val('f_pack'))||1,supplier:val('f_supplier').trim()};
+    const flavours=flavourNames(val('f_flavours'));
+    const flavourStock=flavours.map((name,i)=>({name,qty:$('#f_flavour_count_'+i).valueAsNumber}));
+    if(flavourStock.some(row=>!Number.isSafeInteger(row.qty)||row.qty<0)){toast('Enter a whole stock count for every flavour');return}
+    const stock=flavours.length?flavourStock.reduce((n,row)=>n+row.qty,0):num(val('f_stock'));
+    const o={name,pairPrice,flavours,flavourStock:flavours.length?flavourStock:null,category:val('f_cat').trim(),price,cost:num(val('f_cost')),stock,min:num(val('f_min')),unit:val('f_unit').trim(),pack:num(val('f_pack'))||1,supplier:val('f_supplier').trim()};
     await put('products',d.id||newId(),o);closeModal();toast('Saved');render();
   },
   pdelask(d){ask('Delete this product? Past sales keep their history.','pdel',d.id)},
@@ -622,13 +640,16 @@ const A={
   recv(d){
     const p=prod(d.id);if(!p)return;
     openModal(`<h2>Receive stock</h2><p><b>${esc(p.name)}</b> – now ${num(p.stock)} in stock</p>
+    ${p.flavours?.length?`<label for="r_flavour">Flavour</label><select id="r_flavour">${p.flavours.map(name=>`<option>${esc(name)}</option>`).join('')}</select>`:''}
     <label>Quantity received</label><input id="r_qty" type="number" inputmode="decimal" value="${d.qty||''}">
     <label>New cost per unit (optional)</label><input id="r_cost" type="number" inputmode="decimal" step="0.01" placeholder="${num(p.cost)}">
     <div class="row" style="margin-top:14px"><button class="b" data-a="recvsave" data-id="${p.id}">Add to stock</button><button class="b alt nf" data-a="close">Cancel</button></div>`);
   },
   async recvsave(d){
     const p=prod(d.id),q=num(val('r_qty'));if(!p||q<=0){toast('Enter a quantity');return}
-    const patch={stock:num(p.stock)+q};const c=val('r_cost');if(c!=='')patch.cost=num(c);
+    if(p.flavours?.length&&!p.flavourStock){toast('Set the flavour counts in Edit product first');return}
+    if(p.flavourStock&&!Number.isSafeInteger(q)){toast('Enter a whole quantity');return}
+    const patch=stockPatch(p,p.flavours?.length?val('r_flavour'):'',q);const c=val('r_cost');if(c!=='')patch.cost=num(c);
     await upd('products',p.id,patch);closeModal();toast(q+' added to '+p.name);render();
   },
   pimport(){openModal(`<h2>Import products</h2><p class="sub">One product per line, separated by commas or tabs (paste straight from a spreadsheet):<br><b>Name, selling price, cost price, stock, reorder level, supplier, category</b><br>Only the name is required. Names can't contain commas.</p>
@@ -694,7 +715,7 @@ const A={
 A.void=function(d){const s=S.sales.find(x=>x.id===d.id);if(!s)return;ask('Void this sale and put the items back in stock?','voidgo',d.id)};
 A.voidgo=async function(d){
   const s=S.sales.find(x=>x.id===d.id);if(!s)return;
-  for(const i of s.items){const p=prod(i.pid);if(p)await upd('products',p.id,{stock:num(p.stock)+num(i.qty)})}
+  for(const i of s.items){const p=prod(i.pid);if(p)await upd('products',p.id,stockPatch(p,i.flavour,num(i.qty)))}
   await del('sales',s.id);closeModal();toast('Sale voided');render();
 };
 
@@ -702,13 +723,19 @@ async function doCheckout(withInv){
   if(S.busy)return;
   const lines=S.cart.filter(c=>num(c.qty)>0&&prod(c.pid));
   if(!lines.length){toast('Cart is empty');return}
+  for(const line of lines){
+    const p=prod(line.pid);
+    if(p.flavourStock&&(!p.flavours.includes(line.flavour)||!Number.isSafeInteger(num(line.qty))||num(line.qty)>flavourCount(p,line.flavour))){
+      toast('Check stock for '+p.name+(line.flavour?' · '+line.flavour:''));return;
+    }
+  }
   S.busy=true;
   try{
     const items=lines.map(c=>{const p=prod(c.pid);return{pid:c.pid,name:c.flavour?p.name+' · '+c.flavour:p.name,flavour:c.flavour,cat:p.category||'',unit:p.unit||'',qty:num(c.qty),price:num(c.price),discount:cartDiscount(c),cost:num(p.cost)}});
     const total=items.reduce((a,i)=>a+lineTotal(i),0);
     const saleId=newId();
     await put('sales',saleId,{ts:Date.now(),items,total,pay:S.pay,customer:S.cust.name.trim(),by:S.by.trim()});
-    for(const i of items){const p=prod(i.pid);if(p)await upd('products',p.id,{stock:Math.max(0,num(p.stock)-i.qty)})}
+    for(const i of items){const p=prod(i.pid);if(p)await upd('products',p.id,stockPatch(p,i.flavour,-i.qty))}
     let inv=null;
     if(withInv)inv=await makeInvoice(items,total,S.pay,S.cust,saleId,S.by.trim());
     S.cart=[];S.cust={name:'',phone:'',address:''};
@@ -731,7 +758,16 @@ document.addEventListener('change',e=>{
   r.readAsText(e.target.files[0]);
 });
 document.addEventListener('input',e=>{
-  const t=e.target,k=t.dataset&&t.dataset.in;if(!k)return;
+  const t=e.target;
+  if(t.id==='f_flavours'){
+    const previous=new Map([...$('#f_flavour_counts').querySelectorAll('input')].map(input=>[input.dataset.flavourCount,input.value]));
+    const names=flavourNames(t.value);
+    $('#f_flavour_counts').innerHTML=countFields(names.map(name=>({name,qty:previous.get(name)??''})));
+    $('#f_stock_group').hidden=names.length>0;
+    $('#f_flavour_help').hidden=names.length===0;
+    return;
+  }
+  const k=t.dataset&&t.dataset.in;if(!k)return;
   if(k==='q'){S.q=t.value;render()}
   else if(k==='q2'){S.q2=t.value;render()}
   else if(k==='cqty'||k==='cprice'){const c=S.cart.find(x=>x.id===t.dataset.id);if(c){if(k==='cqty')c.qty=num(t.value);else c.price=num(t.value);refreshCart()}}
