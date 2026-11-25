@@ -789,7 +789,8 @@ document.addEventListener('input',e=>{
 const PIN_KEY='garden-route-green-device-pins';
 const validPin=value=>/^\d{6}$/.test(value);
 let pinUsers=[], pinUser=null, pinBusy=false, failedPins=0, retryAt=0;
-const pinOwner=()=>!pinUsers.length||pinUser?.slot===0;
+const pinSlots=[0,5,1,2];
+const pinOwner=()=>!pinUsers.length||pinUser?.slot===0||pinUser?.slot===5;
 const restrictedActions=new Set(['settings','pinsetup','backup','ssave','pdelask','pdel','cats','catadd','catdel','invdel','invdelgo','void','voidgo']);
 const shopBrand=`<div class="brand"><span class="logo">${ico('leaf')}</span><div><h1>Garden Route Green</h1><small>Sales, stock and invoices</small></div></div>`;
 
@@ -826,9 +827,9 @@ function pinSetupForm(){
   return `<form id="pin-setup">
     <h2>${pinUsers.length?'Manage staff PINs':'Set up PIN login'}</h2>
     <p class="sub">PINs work on this browser. Keep your owner PIN somewhere safe.</p>
-    ${Array.from({length:5},(_,slot)=>{
+    ${pinSlots.map(slot=>{
       const user=pinUsers.find(u=>u.slot===slot);
-      return `<div class="two"><div><label for="pin-name-${slot}">${slot===0?'Owner':'Staff '+slot} name</label><input id="pin-name-${slot}" maxlength="60" value="${esc(user?.name||(slot===0?'Xalinda':''))}" ${slot===0?'required':''}></div>
+      return `<div class="two"><div><label for="pin-name-${slot}">${slot===0?'Owner 1':slot===5?'Owner 2':'Staff '+slot} name</label><input id="pin-name-${slot}" maxlength="60" value="${esc(user?.name||(slot===0?'Xalinda':''))}" ${slot===0?'required':''}></div>
       <div><label for="pin-code-${slot}">6-digit PIN</label><input id="pin-code-${slot}" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{6}" maxlength="6" placeholder="${user?'Keep current PIN':'Enter PIN'}" ${slot===0&&!user?'required':''}></div></div>`;
     }).join('')}
     <label for="pin-confirm">Confirm new owner PIN</label><input id="pin-confirm" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{6}" maxlength="6" placeholder="Only when setting a new owner PIN">
@@ -841,7 +842,7 @@ async function savePins(){
   const status=$('#pin-setup-status'), next=[], names=new Set();
   const ownerPin=val('pin-code-0');
   if(ownerPin!==val('pin-confirm')){status.textContent='Enter the same owner PIN twice.';return}
-  for(let slot=0;slot<5;slot++){
+  for(const slot of pinSlots){
     const name=val('pin-name-'+slot).trim(), pin=val('pin-code-'+slot);
     const previous=pinUsers.find(u=>u.slot===slot);
     if(slot>0&&!name&&!pin)continue;
@@ -891,7 +892,7 @@ document.addEventListener('submit',async e=>{
 });
 
 /* ---------- start ---------- */
-try{pinUsers=JSON.parse(localStorage.getItem(PIN_KEY)||'[]')}catch(e){}
+try{pinUsers=JSON.parse(localStorage.getItem(PIN_KEY)||'[]').filter(user=>pinSlots.includes(user.slot)).sort((a,b)=>pinSlots.indexOf(a.slot)-pinSlots.indexOf(b.slot))}catch(e){}
 loadLocal();
 S.loaded={products:1,sales:1,invoices:1};
 pinHeader();
