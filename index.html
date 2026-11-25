@@ -264,7 +264,7 @@ const ico=n=>`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentCol
 const catList=()=>[...new Set(S.products.map(p=>String(p.category||'').trim()).concat(st().cats||[]).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
 const staffList=()=>{const l=(st().staff||[]).filter(Boolean);return l.length?l:DEF.staff};
 function catChips(key){
-  const cs=catList();if(!cs.length)return '';
+  const cs=SELL_CATEGORIES;
   const cur=S[key];
   return '<div class="catbar"><button class="'+(cur?'':'on')+'" data-a="cat" data-k="'+key+'" data-c="">All</button>'+cs.map(c=>'<button class="'+(cur===c?'on':'')+'" data-a="cat" data-k="'+key+'" data-c="'+esc(c)+'">'+esc(c)+'</button>').join('')+'</div>';
 }
@@ -341,15 +341,25 @@ const SELL_CATEGORY_TERMS=[
   /\b(edibles?|gumm(?:y|ies)|chocolates?|cookies?|brownies?|cand(?:y|ies)|sweets?|toffees?|lollipops?|capsules?|tinctures?|drops?|syrups?|drinks?|beverages?|oral)\b/i,
   /\b(topicals?|balms?|creams?|gels?|salves?|ointments?|lotions?|rub|massage|soaps?)\b/i
 ];
+const LEGACY_SELL_GROUPS=[
+  /^(prr|smk|smoking)$/,
+  /^(vap|1\s*ml|awaken 1ml etched)$/,
+  /^(edi|drk|cre|tin|pet|bdl|oil\/booster|milkshakes?|chai latte 30mg)$/,
+  /^creams$/
+];
 function sellCategory(product){
   const category=String(product.category||'').trim().toLowerCase();
   const explicit=SELL_CATEGORIES.find(name=>name.toLowerCase()===category);
   if(explicit)return explicit;
-  for(const label of [category,product.name]){
-    const index=SELL_CATEGORY_TERMS.findIndex(term=>term.test(label));
-    if(index!==-1)return SELL_CATEGORIES[index];
-  }
-  return '';
+  const name=String(product.name||'');
+  if(/\b(ice cream|milkshakes?|fudge)\b/i.test(name))return 'Edibles';
+  if(SELL_CATEGORY_TERMS[3].test(name)||/\b(roll[ -]on|relief spray)\b/i.test(name))return 'Topicals';
+  const legacyIndex=LEGACY_SELL_GROUPS.findIndex(term=>term.test(category));
+  if(legacyIndex!==-1)return SELL_CATEGORIES[legacyIndex];
+  const namedIndex=SELL_CATEGORY_TERMS.findIndex(term=>term.test(category));
+  if(namedIndex!==-1)return SELL_CATEGORIES[namedIndex];
+  const productIndex=SELL_CATEGORY_TERMS.findIndex(term=>term.test(name));
+  return SELL_CATEGORIES[productIndex]||'';
 }
 function frequentlyUsedProducts(){
   const selections=st().productSelections||{};
@@ -385,7 +395,7 @@ function sell(){
 }
 function stock(){
   const q=S.q2.toLowerCase();
-  const list=S.products.filter(p=>(!S.cat2||p.category===S.cat2)&&(!q||String(p.name).toLowerCase().includes(q)||String(p.supplier||'').toLowerCase().includes(q)||String(p.category||'').toLowerCase().includes(q))).sort(byName);
+  const list=S.products.filter(p=>(!S.cat2||sellCategory(p)===S.cat2)&&(!q||String(p.name).toLowerCase().includes(q)||String(p.supplier||'').toLowerCase().includes(q)||String(p.category||'').toLowerCase().includes(q)||sellCategory(p).toLowerCase().includes(q))).sort(byName);
   const val=S.products.reduce((a,p)=>a+Math.max(0,num(p.stock))*num(p.cost),0);
   let h=`<div class="kpis"><div class="kpi"><small>Products</small><b>${S.products.length}</b></div><div class="kpi"><small>Stock value (cost)</small><b>${R(val)}</b></div></div>
   <div class="row" style="margin-bottom:10px"><button class="b" data-a="pnew">${ico('plus')} Add product</button><button class="b alt" data-a="pimport">${ico('upload')} Import</button>${pinOwner()?`<button class="b alt" data-a="cats">${ico('tag')} Categories</button>`:''}</div>
