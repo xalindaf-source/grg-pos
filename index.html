@@ -308,7 +308,7 @@ function cartSheet(){
       <button class="rm" data-a="crm" data-id="${c.id}" aria-label="Remove">${ico('x')}</button></div></div>`}).join('');
     h+=`<div class="tot"><span>Total</span><b id="ctot">${R(cartTotal())}</b></div>
       <div class="two"><div><label>Payment</label><select data-in="pay">${['Cash','Card','EFT','On account'].map(x=>`<option${S.pay===x?' selected':''}>${x}</option>`).join('')}</select></div>
-      <div><label>Sold by</label>${staffList().length?`<select data-in="by"><option value="">Choose…</option>${staffList().map(n=>`<option${S.by===n?' selected':''}>${esc(n)}</option>`).join('')}</select>`:`<input data-in="by" placeholder="Salesperson" value="${esc(S.by)}">`}</div></div>
+      <div><label>Sold by</label>${pinUser?`<input readonly value="${esc(pinUser.name)}">`:staffList().length?`<select data-in="by"><option value="">Choose…</option>${staffList().map(n=>`<option${S.by===n?' selected':''}>${esc(n)}</option>`).join('')}</select>`:`<input data-in="by" placeholder="Salesperson" value="${esc(S.by)}">`}</div></div>
       <div class="row" style="margin-top:12px"><button class="b" data-a="checkout">${ico('check')} Complete sale</button><button class="b alt" data-a="checkoutinv">${ico('doc')} Sale + invoice</button><button class="b red nf" data-a="clear">Clear</button></div>`;
   return h;
 }
@@ -337,7 +337,7 @@ function stock(){
   const list=S.products.filter(p=>(!S.cat2||p.category===S.cat2)&&(!q||String(p.name).toLowerCase().includes(q)||String(p.supplier||'').toLowerCase().includes(q)||String(p.category||'').toLowerCase().includes(q))).sort(byName);
   const val=S.products.reduce((a,p)=>a+Math.max(0,num(p.stock))*num(p.cost),0);
   let h=`<div class="kpis"><div class="kpi"><small>Products</small><b>${S.products.length}</b></div><div class="kpi"><small>Stock value (cost)</small><b>${R(val)}</b></div></div>
-  <div class="row" style="margin-bottom:10px"><button class="b" data-a="pnew">${ico('plus')} Add product</button><button class="b alt" data-a="pimport">${ico('upload')} Import</button><button class="b alt" data-a="cats">${ico('tag')} Categories</button></div>
+  <div class="row" style="margin-bottom:10px"><button class="b" data-a="pnew">${ico('plus')} Add product</button><button class="b alt" data-a="pimport">${ico('upload')} Import</button>${pinOwner()?`<button class="b alt" data-a="cats">${ico('tag')} Categories</button>`:''}</div>
   ${catChips('cat2')}<input class="search" id="q2" data-in="q2" placeholder="Search stock, category or supplier" value="${esc(S.q2)}">`;
   if(!list.length)return h+'<div class="empty">Nothing here yet.</div>';
   h+='<section class="card">'+list.map(p=>{const i=info(p);return `<div class="prow st-${i.s}"><div><b>${esc(p.name)}</b><div class="sub">${p.category?'<b>'+esc(p.category)+'</b> · ':''}${R(p.price)} sell · ${R(p.cost)} cost${p.supplier?' · '+esc(p.supplier):''}</div><div class="sub">Reorder at ${i.min}</div>${p.flavours?.length?`<div class="sub">${p.flavourStock?p.flavours.map(name=>esc(name)+' '+flavourCount(p,name)).join(' · '):'Edit product to set flavour counts'}${p.flavourStock&&num(p.stock)>p.flavourStock.reduce((n,row)=>n+row.qty,0)?' · Unassigned '+(num(p.stock)-p.flavourStock.reduce((n,row)=>n+row.qty,0)):''}</div>`:''}</div>
@@ -385,13 +385,17 @@ function report(){
   if(cl.length>1||(cl.length===1&&cl[0][0]!=='Uncategorised'))h+='<section class="card"><h3>Sales by category</h3>'+cl.map(([k,t])=>`<div class="prow"><div>${esc(k)}<div class="sub">${t.qty} sold</div></div><b>${R(t.rev)}</b></div>`).join('')+'</section>';
   if(tl.length)h+='<section class="card"><h3>Top sellers</h3>'+tl.map(t=>`<div class="prow"><div>${esc(t.name)}<div class="sub">${t.qty} sold</div></div><b>${R(t.rev)}</b></div>`).join('')+'</section>';
   h+='<section class="card"><h3>Sales</h3>'+(sales.length?sales.slice(0,60).map(s=>{const hasInv=S.invoices.find(v=>v.saleId===s.id);return `<div class="prow"><div><b>${R(s.total)}</b> <span class="sub">· ${esc(s.pay||'')}${s.by?' · by '+esc(s.by):''}</span><div class="sub">${new Date(s.ts).toLocaleString('en-ZA',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}${s.customer?' · '+esc(s.customer):''}</div><div class="sub">${(s.items||[]).map(i=>esc(i.name)+' ×'+i.qty).join(', ')}</div></div>
-    <div class="right">${hasInv?`<button class="b alt sm nf" data-a="invopen" data-id="${hasInv.id}">${esc(hasInv.no)}</button>`:`<button class="b alt sm nf" data-a="saleinv" data-id="${s.id}">Invoice</button>`}<button class="b red sm nf" data-a="void" data-id="${s.id}">Void</button></div></div>`}).join(''):'<div class="empty">No sales in this period.</div>')+'</section>';
+    <div class="right">${hasInv?`<button class="b alt sm nf" data-a="invopen" data-id="${hasInv.id}">${esc(hasInv.no)}</button>`:`<button class="b alt sm nf" data-a="saleinv" data-id="${s.id}">Invoice</button>`}${pinOwner()?`<button class="b red sm nf" data-a="void" data-id="${s.id}">Void</button>`:''}</div></div>`}).join(''):'<div class="empty">No sales in this period.</div>')+'</section>';
   return h;
 }
 const VIEWS={sell,stock,reorder,invoices,report};
 const TABS=[['sell','cart','Sell'],['stock','box','Stock'],['reorder','truck','Reorder'],['invoices','doc','Invoices'],['report','chart','Report']];
 
 function render(){
+  if(pinUsers.length&&!pinUser){
+    if(!$('#pin-login'))$('#main').innerHTML=pinLoginForm();
+    $('#nav').replaceChildren();$('#cartbar').style.display='none';return;
+  }
   if(!S.loaded.products){$('#main').innerHTML='<div class="empty">Loading…</div>';drawNav(0);return}
   derive();
   const f=document.activeElement,main=$('#main');
@@ -560,7 +564,7 @@ function closeDoc(){const el=$('#docview');el.classList.remove('on');el.innerHTM
 function showInvoice(v){
   showDoc({title:v.no,chip:`<span class="chip ${v.status==='paid'?'paid':'unpaid'}">${v.status==='paid'?'Paid':'Unpaid'}</span>`,body:invBody(v),text:invText(v),
     pdfName:v.no+'.pdf',pdf:()=>buildPdf(invPdfData(v)),
-    more:`<button class="b alt" data-a="invpaid" data-id="${v.id}">${v.status==='paid'?'Mark unpaid':'Mark paid'}</button><button class="b red" data-a="invdel" data-id="${v.id}">Delete</button>`});
+    more:`<button class="b alt" data-a="invpaid" data-id="${v.id}">${v.status==='paid'?'Mark unpaid':'Mark paid'}</button>${pinOwner()?`<button class="b red" data-a="invdel" data-id="${v.id}">Delete</button>`:''}`});
 }
 
 /* ---------- product forms ---------- */
@@ -581,7 +585,7 @@ function prodForm(p){
   <div class="two"><div><label>Unit (e.g. each, box, kg)</label><input id="f_unit" value="${esc(p.unit)}"></div>
   <div><label>Order in packs of</label><input id="f_pack" type="number" inputmode="decimal" placeholder="1" value="${p.pack||''}"></div></div>
   <label>Supplier</label><input id="f_supplier" value="${esc(p.supplier)}">
-  <div class="row" style="margin-top:14px"><button class="b" data-a="psave" data-id="${p.id||''}">Save</button>${p.id?`<button class="b red nf" data-a="pdelask" data-id="${p.id}">Delete</button>`:''}<button class="b alt nf" data-a="close">Cancel</button></div>`;
+  <div class="row" style="margin-top:14px"><button class="b" data-a="psave" data-id="${p.id||''}">Save</button>${p.id&&pinOwner()?`<button class="b red nf" data-a="pdelask" data-id="${p.id}">Delete</button>`:''}<button class="b alt nf" data-a="close">Cancel</button></div>`;
 }
 function settingsForm(){
   const s=st();
@@ -595,6 +599,7 @@ function settingsForm(){
   <label>Invoice footer note</label><input id="s_footer" value="${esc(s.footer)}">
   <label>Salespeople (one name per line)</label><textarea id="s_staff" rows="3" placeholder="Xalinda">${esc(staffList().join('\n'))}</textarea>
   <label>Order enough stock to last (days)</label><input id="s_cover" type="number" inputmode="numeric" value="${s.cover}">
+  <div class="row" style="margin-top:12px"><button class="b alt" data-a="pinsetup">${pinUsers.length?'Manage staff PINs':'Set up PIN login'}</button></div>
   <label>Data backup</label><div class="row"><button class="b alt" data-a="backup">${ico('upload')} Back up data</button><label class="b alt" style="margin:0;cursor:pointer">${ico('plus')} Restore<input id="restore_file" type="file" accept=".json,application/json" hidden></label></div>
   <p class="sub">Your data is saved in this browser on this device. Back it up regularly, and before clearing browser data.</p>
   <div class="row" style="margin-top:14px"><button class="b" data-a="ssave">Save</button><button class="b alt nf" data-a="close">Cancel</button></div>`;
@@ -703,6 +708,8 @@ const A={
     showInvoice(v);render();
   },
   settings(){openModal(settingsForm())},
+  pinsetup(){openModal(pinSetupForm())},
+  lockpin(){lockTill()},
   backup(){
     const blob=new Blob([JSON.stringify({products:S.products,sales:S.sales,invoices:S.invoices,settings:S.settings})],{type:'application/json'});
     const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='garden-route-green-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);toast('Backup saved to your downloads');
@@ -746,13 +753,15 @@ async function doCheckout(withInv){
 }
 
 document.addEventListener('click',e=>{
+  if(pinBusy||(pinUsers.length&&!pinUser))return;
   if(e.target.id==='modal'){closeModal();return}
   const b=e.target.closest('[data-a]');if(!b)return;
-  const f=A[b.dataset.a];if(!f)return;
+  if(!pinOwner()&&restrictedActions.has(b.dataset.a))return;
+  const f=A[b.dataset.a];if(!Object.hasOwn(A,b.dataset.a))return;
   Promise.resolve().then(()=>f(b.dataset)).catch(()=>toast('Something went wrong – please try again'));
 });
 document.addEventListener('change',e=>{
-  if(e.target.id!=='restore_file'||!e.target.files[0])return;
+  if(!pinOwner()||e.target.id!=='restore_file'||!e.target.files[0])return;
   const r=new FileReader();
   r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.products))throw 0;S.products=d.products;S.sales=d.sales||[];S.invoices=d.invoices||[];S.settings=d.settings||{};persist();closeModal();render();toast('Backup restored')}catch(x){toast('That file is not a Garden Route Green backup')}};
   r.readAsText(e.target.files[0]);
@@ -772,15 +781,120 @@ document.addEventListener('input',e=>{
   else if(k==='q2'){S.q2=t.value;render()}
   else if(k==='cqty'||k==='cprice'){const c=S.cart.find(x=>x.id===t.dataset.id);if(c){if(k==='cqty')c.qty=num(t.value);else c.price=num(t.value);refreshCart()}}
   else if(k==='pay'){S.pay=t.value}
-  else if(k==='by'){S.by=t.value}
+  else if(k==='by'&&!pinUser){S.by=t.value}
   else if(k.indexOf('cust_')===0){S.cust[k.slice(5)]=t.value}
 });
 
+/* ---------- device PINs ---------- */
+const PIN_KEY='garden-route-green-device-pins';
+const validPin=value=>/^\d{6}$/.test(value);
+let pinUsers=[], pinUser=null, pinBusy=false, failedPins=0, retryAt=0;
+const pinOwner=()=>!pinUsers.length||pinUser?.slot===0;
+const restrictedActions=new Set(['settings','pinsetup','backup','ssave','pdelask','pdel','cats','catadd','catdel','invdel','invdelgo','void','voidgo']);
+const shopBrand=`<div class="brand"><span class="logo">${ico('leaf')}</span><div><h1>Garden Route Green</h1><small>Sales, stock and invoices</small></div></div>`;
+
+function hex(bytes){return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('')}
+async function pinHash(pin,salt){
+  const encoder=new TextEncoder();
+  const key=await crypto.subtle.importKey('raw',encoder.encode(pin),'PBKDF2',false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:encoder.encode(salt),iterations:600000},key,256);
+  return hex(new Uint8Array(bits));
+}
+
+function pinHeader(){
+  $('#hdr').innerHTML=shopBrand+
+    (pinOwner()?'<button class="iconbtn" data-a="settings" aria-label="Settings">'+ico('sliders')+'</button>':'')+
+    (pinUser?'<button class="b alt sm nf" data-a="lockpin">Lock till</button>':'');
+}
+function lockTill(){
+  if(S.busy||pinBusy)return;
+  pinUser=null;
+  Object.assign(S,{by:'',cart:[],cust:{name:'',phone:'',address:''},q:'',q2:'',cat:'',cat2:'',tab:'sell',pay:'Cash'});
+  closeModal();closeDoc();$('#printarea').replaceChildren();
+  pinHeader();render();
+}
+function pinLoginForm(){
+  return `<form id="pin-login" class="card" style="max-width:420px;margin:24px auto">
+    <h2>Unlock till</h2>
+    <label for="pin-person">Name</label><select id="pin-person">${pinUsers.map(u=>`<option value="${u.slot}">${esc(u.name)}</option>`).join('')}</select>
+    <label for="pin-login-code">6-digit PIN</label><input id="pin-login-code" type="password" inputmode="numeric" autocomplete="off" pattern="[0-9]{6}" maxlength="6" required>
+    <p class="sub" role="status" id="pin-login-status"></p>
+    <button class="b" type="submit">Unlock</button>
+  </form>`;
+}
+function pinSetupForm(){
+  return `<form id="pin-setup">
+    <h2>${pinUsers.length?'Manage staff PINs':'Set up PIN login'}</h2>
+    <p class="sub">PINs work on this browser. Keep your owner PIN somewhere safe.</p>
+    ${Array.from({length:5},(_,slot)=>{
+      const user=pinUsers.find(u=>u.slot===slot);
+      return `<div class="two"><div><label for="pin-name-${slot}">${slot===0?'Owner':'Staff '+slot} name</label><input id="pin-name-${slot}" maxlength="60" value="${esc(user?.name||(slot===0?'Xalinda':''))}" ${slot===0?'required':''}></div>
+      <div><label for="pin-code-${slot}">6-digit PIN</label><input id="pin-code-${slot}" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{6}" maxlength="6" placeholder="${user?'Keep current PIN':'Enter PIN'}" ${slot===0&&!user?'required':''}></div></div>`;
+    }).join('')}
+    <label for="pin-confirm">Confirm new owner PIN</label><input id="pin-confirm" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{6}" maxlength="6" placeholder="Only when setting a new owner PIN">
+    <p class="sub" role="status" id="pin-setup-status"></p>
+    <div class="row"><button class="b" type="submit">${pinUsers.length?'Save PINs and lock':'Turn on PIN login'}</button><button class="b alt nf" type="button" data-a="settings">Cancel</button></div>
+  </form>`;
+}
+async function savePins(){
+  if(!pinOwner())return;
+  const status=$('#pin-setup-status'), next=[], names=new Set();
+  const ownerPin=val('pin-code-0');
+  if(ownerPin!==val('pin-confirm')){status.textContent='Enter the same owner PIN twice.';return}
+  for(let slot=0;slot<5;slot++){
+    const name=val('pin-name-'+slot).trim(), pin=val('pin-code-'+slot);
+    const previous=pinUsers.find(u=>u.slot===slot);
+    if(slot>0&&!name&&!pin)continue;
+    if(!name||(!previous&&!validPin(pin))||(pin&&!validPin(pin))){
+      status.textContent='Enter a name and a 6-digit PIN for each person you want to add.';return;
+    }
+    if(names.has(name.toLowerCase())){status.textContent='Give each person a different name.';return}
+    names.add(name.toLowerCase());
+    if(pin){
+      const salt=hex(crypto.getRandomValues(new Uint8Array(16)));
+      next.push({slot,name,salt,hash:await pinHash(pin,salt)});
+    }else next.push({...previous,name});
+  }
+  localStorage.setItem(PIN_KEY,JSON.stringify(next));
+  pinUsers=next;
+  pinBusy=false;
+  lockTill();
+}
+async function unlockTill(form){
+  const status=$('#pin-login-status'), pin=val('pin-login-code');
+  if(Date.now()<retryAt){status.textContent='Too many attempts. Wait 30 seconds and try again.';return}
+  const user=pinUsers.find(u=>u.slot===Number(val('pin-person')));
+  if(!user||!validPin(pin)||await pinHash(pin,user.salt)!==user.hash){
+    failedPins++;
+    if(failedPins>=5){retryAt=Date.now()+30000;failedPins=0;status.textContent='Too many attempts. Wait 30 seconds and try again.'}
+    else status.textContent='That PIN does not match the selected name.';
+    form.querySelector('#pin-login-code').value='';
+    return;
+  }
+  failedPins=0;retryAt=0;pinUser=user;S.by=user.name;
+  pinHeader();render();
+}
+
+document.addEventListener('submit',async e=>{
+  const form=e.target;
+  if(form.id!=='pin-login'&&form.id!=='pin-setup')return;
+  e.preventDefault();if(pinBusy)return;
+  pinBusy=true;
+  const button=form.querySelector('button[type="submit"]');button.disabled=true;
+  try{
+    if(form.id==='pin-setup')await savePins();
+    else await unlockTill(form);
+  }catch(e){
+    const status=form.querySelector('[role="status"]');
+    if(status)status.textContent='Could not complete PIN setup or login. Check that this browser allows local storage.';
+  }finally{pinBusy=false;button.disabled=false}
+});
+
 /* ---------- start ---------- */
-$('#hdr').innerHTML=`<div class="brand"><span class="logo">${ico('leaf')}</span><div><h1>Garden Route Green</h1><small>Sales, stock and invoices</small></div></div><button class="iconbtn" data-a="settings" aria-label="Settings">${ico('sliders')}</button>`;
-render();
+try{pinUsers=JSON.parse(localStorage.getItem(PIN_KEY)||'[]')}catch(e){}
 loadLocal();
 S.loaded={products:1,sales:1,invoices:1};
+pinHeader();
 render();
 </script>
 </body>
