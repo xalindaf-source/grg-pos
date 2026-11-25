@@ -59,6 +59,14 @@ label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:10p
 .row>.nf{flex:none}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .tile{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:left;display:flex;flex-direction:column;gap:2px;min-height:96px;font:inherit;color:inherit;box-shadow:var(--shadow);transition:transform .08s,border-color .15s}
+.sell-categories{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.sell-categories .tile{min-height:64px;flex-direction:row;align-items:center;justify-content:space-between;padding:12px 15px}
+.sell-categories .tile b{font-size:16px}
+.sell-categories .tile span{margin:0;padding:0;font-size:22px}
+.sell-section-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.sell-section-head h2,.sell-favourites h2{margin:0;font-size:17px}
+.sell-favourites{margin-top:22px}
+.sell-favourites h2{margin-bottom:10px}
 .tile:active{transform:scale(.98);border-color:var(--brand);background:var(--brand-soft)}
 .tile b{font-size:14.5px;line-height:1.25}
 .tile .tc{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
@@ -290,6 +298,9 @@ function addCartLine(p,flavour=''){
   const line=S.cart.find(c=>c.pid===p.id&&c.flavour===flavour);
   if(line)line.qty=num(line.qty)+1;
   else S.cart.push({id:newId(),pid:p.id,flavour,qty:1,price:num(p.price)});
+  const selections=S.settings.productSelections||{};
+  S.settings.productSelections={...selections,[p.id]:num(selections[p.id])+1};
+  persist();
   render();
 }
 const lineTotal=i=>(Math.round(num(i.qty)*num(i.price)*100)-Math.round(num(i.discount)*100))/100;
@@ -323,14 +334,54 @@ function drawCartBar(){
 }
 function drawCartSheet(){if(S.cartOpen)$('#sheet').innerHTML=cartSheet()}
 function cartChanged(){render();if(S.cartOpen){if(!S.cart.length)closeModal();else drawCartSheet()}}
+const SELL_CATEGORIES=['Joints','Vapes','Edibles','Topicals'];
+const SELL_CATEGORY_TERMS=[
+  /\b(joints?|pre[ -]?rolls?|spliffs?|blunts?)\b/i,
+  /\b(vapes?|vaping|cartridges?|disposables?|disp|pens?|travel[el]+rs?)\b/i,
+  /\b(edibles?|gumm(?:y|ies)|chocolates?|cookies?|brownies?|cand(?:y|ies)|sweets?|toffees?|lollipops?|capsules?|tinctures?|drops?|syrups?|drinks?|beverages?|oral)\b/i,
+  /\b(topicals?|balms?|creams?|gels?|salves?|ointments?|lotions?|rub|massage|soaps?)\b/i
+];
+function sellCategory(product){
+  const category=String(product.category||'').trim().toLowerCase();
+  const explicit=SELL_CATEGORIES.find(name=>name.toLowerCase()===category);
+  if(explicit)return explicit;
+  for(const label of [category,product.name]){
+    const index=SELL_CATEGORY_TERMS.findIndex(term=>term.test(label));
+    if(index!==-1)return SELL_CATEGORIES[index];
+  }
+  return '';
+}
+function frequentlyUsedProducts(){
+  const selections=st().productSelections||{};
+  const sales=new Map();
+  for(const sale of S.sales){
+    for(const item of sale.items||[]){
+      sales.set(item.pid,(sales.get(item.pid)||0)+1);
+    }
+  }
+  const score=product=>Math.max(num(selections[product.id]),sales.get(product.id)||0);
+  return S.products.filter(p=>score(p)>0).sort((a,b)=>score(b)-score(a)||byName(a,b)).slice(0,4);
+}
+function sellTiles(products){
+  return '<div class="grid">'+products.map(p=>{
+    const i=info(p);
+    return `<button class="tile" data-a="add" data-id="${esc(p.id)}"><b>${esc(p.name)}</b><span>${R(p.price)}${p.unit?' / '+esc(p.unit):''}</span><small class="${i.s==='out'?'out':i.s==='low'?'low':''}">${i.s==='out'?'Out of stock':i.stock+' in stock'}</small></button>`;
+  }).join('')+'</div>';
+}
 function sell(){
-  const q=S.q.toLowerCase();
-  const list=S.products.filter(p=>(!S.cat||p.category===S.cat)&&(!q||String(p.name).toLowerCase().includes(q)||String(p.category||'').toLowerCase().includes(q))).sort(byName);
-  let h='';
-  h+=catChips('cat')+`<input class="search" id="q" data-in="q" placeholder="Search products to sell" value="${esc(S.q)}">`;
-  if(!S.products.length)h+='<div class="empty">No products yet.<br>Go to <b>Stock</b> to add or import your products.</div>';
-  else h+='<div class="grid">'+list.map(p=>{const i=info(p);return `<button class="tile" data-a="add" data-id="${p.id}">${p.category?`<small class="tc">${esc(p.category)}</small>`:''}<b>${esc(p.name)}</b><span>${R(p.price)}${p.unit?' / '+esc(p.unit):''}</span><small class="${i.s==='out'?'out':i.s==='low'?'low':''}">${i.s==='out'?'Out of stock':i.stock+' in stock'}</small></button>`}).join('')+'</div>';
-  return h;
+  const q=S.q.trim().toLowerCase();
+  const search=`<input class="search" id="q" data-in="q" aria-label="Search products to sell" placeholder="Search products to sell" value="${esc(S.q)}">`;
+  if(S.cat||q){
+    const list=S.products.filter(p=>(!S.cat||sellCategory(p)===S.cat)&&
+      (!q||[p.name,p.category,p.sku,sellCategory(p)].some(value=>String(value||'').toLowerCase().includes(q)))).sort(byName);
+    return `<div class="sell-section-head"><button class="b alt sm" data-a="sellhome">← Categories</button><h2>${S.cat||'Search results'}</h2></div>`+search+
+      (list.length?sellTiles(list):'<div class="empty">No matching products.</div>');
+  }
+  const shortcuts=frequentlyUsedProducts();
+  return search+`<div class="sell-categories">${SELL_CATEGORIES.map(category=>
+    `<button class="tile" data-a="sellgroup" data-c="${category}"><b>${category}</b><span aria-hidden="true">›</span></button>`).join('')}</div>`+
+    (shortcuts.length?'<section class="sell-favourites"><h2>Frequently selected</h2>'+sellTiles(shortcuts)+'</section>':'')+
+    (!S.products.length?'<div class="empty">No products yet. Go to Stock to add or import your products.</div>':'');
 }
 function stock(){
   const q=S.q2.toLowerCase();
@@ -573,7 +624,7 @@ function prodForm(p){
   return `<h2>${p.id?'Edit product':'Add product'}</h2>
   <label>Name</label><input id="f_name" value="${esc(p.name)}">
   <label>Category / product type</label><input id="f_cat" list="catopts" placeholder="e.g. Vapes, Gummies, Joints" value="${esc(p.category)}">
-  <datalist id="catopts">${[...new Set(['Vapes','Gummies','Joints'].concat(catList()))].map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
+  <datalist id="catopts">${[...new Set(SELL_CATEGORIES.concat(catList()))].map(c=>`<option value="${esc(c)}">`).join('')}</datalist>
   <label for="f_flavours">Flavours (one per line)</label><textarea id="f_flavours" rows="3" placeholder="Leave blank for no flavour choices">${esc((p.flavours||[]).join('\n'))}</textarea>
   <div id="f_flavour_counts">${countFields((p.flavours||[]).map(name=>({name,qty:p.flavourStock?flavourCount(p,name):''})))}</div>
   <p class="sub" id="f_flavour_help" ${p.flavours?.length?'':'hidden'}>Enter the count for each flavour. Their sum becomes the total stock.</p>
@@ -608,7 +659,9 @@ function settingsForm(){
 
 /* ---------- actions ---------- */
 const A={
-  tab(d){S.tab=d.t;render();scrollTo(0,0)},
+  tab(d){S.tab=d.t;if(d.t==='sell'){S.cat='';S.q=''}render();scrollTo(0,0)},
+  sellgroup(d){S.cat=d.c;S.q='';render();scrollTo(0,0)},
+  sellhome(){S.cat='';S.q='';render();scrollTo(0,0)},
   close(){closeModal()},
   cartopen(){if(!S.cart.length)return;S.cartOpen=true;openModal(cartSheet());drawCartBar()},
   add(d){
