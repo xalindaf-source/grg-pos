@@ -600,6 +600,7 @@ function settingsForm(){
   <label>Salespeople (one name per line)</label><textarea id="s_staff" rows="3" placeholder="Xalinda">${esc(staffList().join('\n'))}</textarea>
   <label>Order enough stock to last (days)</label><input id="s_cover" type="number" inputmode="numeric" value="${s.cover}">
   <div class="row" style="margin-top:12px"><button class="b alt" data-a="pinsetup">${pinUsers.length?'Manage staff PINs':'Set up PIN login'}</button></div>
+  <label>Old Garden Route Green app</label><div class="row"><button class="b alt" data-a="legacyStock">${ico('upload')} Import old products</button></div>
   <label>Data backup</label><div class="row"><button class="b alt" data-a="backup">${ico('upload')} Back up data</button><label class="b alt" style="margin:0;cursor:pointer">${ico('plus')} Restore<input id="restore_file" type="file" accept=".json,application/json" hidden></label></div>
   <p class="sub">Your data is saved in this browser on this device. Back it up regularly, and before clearing browser data.</p>
   <div class="row" style="margin-top:14px"><button class="b" data-a="ssave">Save</button><button class="b alt nf" data-a="close">Cancel</button></div>`;
@@ -710,6 +711,53 @@ const A={
   settings(){openModal(settingsForm())},
   pinsetup(){openModal(pinSetupForm())},
   lockpin(){lockTill()},
+  async legacyStock(){
+    if(!pinOwner()||S.busy)return;
+    const button=document.querySelector('[data-a="legacyStock"]');
+    S.busy=true;
+    if(button)button.disabled=true;
+    try{
+      const response=await fetch("https://script.google.com/macros/s/AKfycbwVllVYwzsFSF0VD0lOIuo8X9sNX3Y9ZJ_TR8ebOmrf4OBrlUuUuG6XXaQwJiWed9EQ/exec?action=getStock",{signal:AbortSignal.timeout(25000),cache:'no-store'});
+      if(!response.ok)throw new Error('Stock request failed');
+      const source=await response.json();
+      if(source.status!=='ok'||!Array.isArray(source.data)||!source.data.length)throw new Error('No stock returned');
+      if(!pinOwner())return;
+      const key=value=>String(value??'').trim().toLowerCase();
+      const signature=(name,supplier)=>JSON.stringify([key(name),key(supplier)]);
+      const existing=JSON.parse(localStorage.getItem(LS)||'null');
+      const products=existing?.products||S.products;
+      const ids=new Set(products.map(p=>p.id));
+      const skus=new Set(products.map(p=>key(p.sku)).filter(Boolean));
+      const names=new Set(products.map(p=>signature(p.name,p.supplier)));
+      const added=[];
+      for(const row of source.data){
+        const name=String(row.product??'').trim();
+        const supplier=String(row.supplier??'').trim();
+        const sku=String(row.sku??'').trim();
+        if(!name)throw new Error('A product was missing its name');
+        const match=signature(name,supplier);
+        const id='old-stock-'+encodeURIComponent(sku?key(sku):match);
+        if(ids.has(id)||(sku&&skus.has(key(sku)))||names.has(match))continue;
+        added.push({id,sku,name,supplier,category:String(row.category??'').trim(),
+          price:num(row.retail),cost:num(row.purchase),stock:num(row.inStock),min:num(row.minLevel),unit:'',pack:1});
+        ids.add(id);
+        if(sku)skus.add(key(sku));else names.add(match);
+      }
+      if(!added.length){toast('These products are already in your app');return}
+      const next={products:[...products,...added],sales:existing?.sales||S.sales,
+        invoices:existing?.invoices||S.invoices,settings:existing?.settings||S.settings};
+      localStorage.setItem(LS,JSON.stringify(next));
+      Object.assign(S,next);
+      closeModal();
+      render();
+      toast(added.length+' products imported'+(source.data.length>added.length?' · '+(source.data.length-added.length)+' already present':''));
+    }catch(error){
+      toast('Could not import old products. Check your connection and try again.');
+    }finally{
+      S.busy=false;
+      if(button)button.disabled=false;
+    }
+  },
   backup(){
     const blob=new Blob([JSON.stringify({products:S.products,sales:S.sales,invoices:S.invoices,settings:S.settings})],{type:'application/json'});
     const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='garden-route-green-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);toast('Backup saved to your downloads');
@@ -791,7 +839,7 @@ const validPin=value=>/^\d{6}$/.test(value);
 let pinUsers=[], pinUser=null, pinBusy=false, failedPins=0, retryAt=0;
 const pinSlots=[0,5,1,2];
 const pinOwner=()=>!pinUsers.length||pinUser?.slot===0||pinUser?.slot===5;
-const restrictedActions=new Set(['settings','pinsetup','backup','ssave','pdelask','pdel','cats','catadd','catdel','invdel','invdelgo','void','voidgo']);
+const restrictedActions=new Set(['settings','pinsetup','legacyStock','backup','ssave','pdelask','pdel','cats','catadd','catdel','invdel','invdelgo','void','voidgo']);
 const shopBrand=`<div class="brand"><span class="logo">${ico('leaf')}</span><div><h1>Garden Route Green</h1><small>Sales, stock and invoices</small></div></div>`;
 
 function hex(bytes){return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('')}
