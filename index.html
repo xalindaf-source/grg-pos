@@ -168,8 +168,6 @@ a.b{display:inline-flex}
 <div id="toast"></div>
 <div id="docview"></div>
 <div id="printarea"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js" defer></script>
-<script src="shop-config.js" defer></script>
 <script>
 /* ---------- helpers ---------- */
 const $=s=>document.querySelector(s);
@@ -179,36 +177,45 @@ const R=n=>{const [a,b]=(Math.round(num(n)*100)/100).toFixed(2).split('.');retur
 const dFmt=ts=>new Date(ts).toLocaleDateString('en-ZA',{day:'numeric',month:'short',year:'numeric'});
 const newId=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36);
 const byName=(a,b)=>String(a.name).localeCompare(String(b.name));
-const DEF={name:'Garden Route Green',address:'',phone:'',email:'',vatNo:'',vatOn:false,bank:'',nextInv:1,cover:14,footer:'Thank you for your business!'};
+const DEF={name:'Garden Route Green',address:'',phone:'',email:'',vatNo:'',vatOn:false,bank:'',nextInv:1,cover:14,staff:['Xalinda','Xavier','Alinda','Alex'],footer:'Thank you for your business!'};
 
-const S={products:[],sales:[],invoices:[],settings:{},cart:[],tab:'sell',q:'',q2:'',cat:'',cat2:'',cust:{name:'',phone:'',address:''},pay:'Cash',range:'today',loaded:{},rate:{},busy:false};
-let DB, member, revision, saving = false, refreshing = false, pendingSave;
-const isOwner=()=>member?.role==='owner';
+const S={products:[],sales:[],invoices:[],settings:{},cart:[],tab:'sell',q:'',q2:'',cat:'',cat2:'',by:'',cust:{name:'',phone:'',address:''},pay:'Cash',range:'today',loaded:{},rate:{},busy:false};
+let DB=null,DL=null;
 const st=()=>Object.assign({},DEF,S.settings);
 const prod=id=>S.products.find(p=>p.id===id);
-const records=()=>({products:S.products,sales:S.sales,invoices:S.invoices,settings:S.settings});
 
-async function rpc(name, args){
-  const {data,error}=await DB.rpc(name,args);
-  if(error)throw error;
-  return data;
+/* ---------- storage (saved in this browser) ---------- */
+const LS='garden-route-green-data';
+function persist(){try{localStorage.setItem(LS,JSON.stringify({products:S.products,sales:S.sales,invoices:S.invoices,settings:S.settings}))}catch(e){note('This browser could not save your data. Use Settings > Back up data often.')}}
+function loadLocal(){try{const d=JSON.parse(localStorage.getItem(LS)||'null');if(d){S.products=d.products||[];S.sales=d.sales||[];S.invoices=d.invoices||[];S.settings=d.settings||{}}}catch(e){}}
+async function put(c,id,data){
+  if(DB){await DB.collection(c).doc(id).set(data)}
+  else{const a=S[c],i=a.findIndex(x=>x.id===id),o=Object.assign({id},data);if(i<0)a.unshift(o);else a[i]=o;persist()}
 }
-function put(c,id,data){
-  const a=S[c],i=a.findIndex(x=>x.id===id),o={...data,id};
-  if(i<0)a.unshift(o);else a[i]=o;
+async function upd(c,id,patch){
+  if(DB){await DB.collection(c).doc(id).update(patch)}
+  else{Object.assign(S[c].find(x=>x.id===id)||{},patch);persist()}
 }
-function upd(c,id,patch){Object.assign(S[c].find(x=>x.id===id)||{},patch)}
-function del(c,id){S[c]=S[c].filter(x=>x.id!==id)}
-
+async function del(c,id){
+  if(DB){await DB.collection(c).doc(id).delete()}
+  else{S[c]=S[c].filter(x=>x.id!==id);persist()}
+}
+function sub(name,key,order){
+  let q=DB.collection(name);
+  if(order)q=q.orderBy(order,'desc').limit(1000);
+  const t=setTimeout(()=>{if(!S.loaded[key]){S.loaded[key]=1;note('Data is slow to load – showing what is available.');render()}},10000);
+  q.onSnapshot(s=>{clearTimeout(t);S[key]=s.docs.map(d=>Object.assign({id:d.id},d.data()));S.loaded[key]=1;render()},
+    ()=>{S.loaded[key]=1;note('Could not load '+name+'.');render()});
+}
 function note(t){const b=$('#banner');b.textContent=t;b.style.display=t?'block':'none'}
 function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2600)}
 
 /* ---------- derived stock info ---------- */
 function derive(){
-  const now=Date.now(),cut=now-30*864e5;let old=now;const m=Object.create(null);
+  const now=Date.now(),cut=now-30*864e5;let old=now;const m={};
   for(const s of S.sales){if(s.ts<cut)continue;old=Math.min(old,s.ts);for(const i of (s.items||[]))m[i.pid]=(m[i.pid]||0)+num(i.qty)}
   const days=Math.min(30,Math.max(7,(now-old)/864e5));
-  S.rate=Object.create(null);for(const k in m)S.rate[k]=m[k]/days;
+  S.rate={};for(const k in m)S.rate[k]=m[k]/days;
 }
 function info(p){
   const stock=num(p.stock),min=num(p.min),rate=S.rate[p.id]||0,cover=rate>0?stock/rate:Infinity;
@@ -247,6 +254,7 @@ const ico=n=>`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentCol
 
 /* ---------- views ---------- */
 const catList=()=>[...new Set(S.products.map(p=>String(p.category||'').trim()).concat(st().cats||[]).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+const staffList=()=>{const l=(st().staff||[]).filter(Boolean);return l.length?l:DEF.staff};
 function catChips(key){
   const cs=catList();if(!cs.length)return '';
   const cur=S[key];
@@ -300,7 +308,7 @@ function cartSheet(){
       <button class="rm" data-a="crm" data-id="${c.id}" aria-label="Remove">${ico('x')}</button></div></div>`}).join('');
     h+=`<div class="tot"><span>Total</span><b id="ctot">${R(cartTotal())}</b></div>
       <div class="two"><div><label>Payment</label><select data-in="pay">${['Cash','Card','EFT','On account'].map(x=>`<option${S.pay===x?' selected':''}>${x}</option>`).join('')}</select></div>
-      <div><label>Sold by</label><input readonly value="${esc(member.name)}"></div></div>
+      <div><label>Sold by</label>${staffList().length?`<select data-in="by"><option value="">Choose…</option>${staffList().map(n=>`<option${S.by===n?' selected':''}>${esc(n)}</option>`).join('')}</select>`:`<input data-in="by" placeholder="Salesperson" value="${esc(S.by)}">`}</div></div>
       <div class="row" style="margin-top:12px"><button class="b" data-a="checkout">${ico('check')} Complete sale</button><button class="b alt" data-a="checkoutinv">${ico('doc')} Sale + invoice</button><button class="b red nf" data-a="clear">Clear</button></div>`;
   return h;
 }
@@ -321,7 +329,7 @@ function sell(){
   let h='';
   h+=catChips('cat')+`<input class="search" id="q" data-in="q" placeholder="Search products to sell" value="${esc(S.q)}">`;
   if(!S.products.length)h+='<div class="empty">No products yet.<br>Go to <b>Stock</b> to add or import your products.</div>';
-  else h+='<div class="grid">'+list.map(p=>{const i=info(p);return `<button class="tile" data-a="add" data-id="${esc(p.id)}">${p.category?`<small class="tc">${esc(p.category)}</small>`:''}<b>${esc(p.name)}</b><span>${R(p.price)}${p.unit?' / '+esc(p.unit):''}</span><small class="${i.s==='out'?'out':i.s==='low'?'low':''}">${i.s==='out'?'Out of stock':i.stock+' in stock'}</small></button>`}).join('')+'</div>';
+  else h+='<div class="grid">'+list.map(p=>{const i=info(p);return `<button class="tile" data-a="add" data-id="${p.id}">${p.category?`<small class="tc">${esc(p.category)}</small>`:''}<b>${esc(p.name)}</b><span>${R(p.price)}${p.unit?' / '+esc(p.unit):''}</span><small class="${i.s==='out'?'out':i.s==='low'?'low':''}">${i.s==='out'?'Out of stock':i.stock+' in stock'}</small></button>`}).join('')+'</div>';
   return h;
 }
 function stock(){
@@ -329,11 +337,11 @@ function stock(){
   const list=S.products.filter(p=>(!S.cat2||p.category===S.cat2)&&(!q||String(p.name).toLowerCase().includes(q)||String(p.supplier||'').toLowerCase().includes(q)||String(p.category||'').toLowerCase().includes(q))).sort(byName);
   const val=S.products.reduce((a,p)=>a+Math.max(0,num(p.stock))*num(p.cost),0);
   let h=`<div class="kpis"><div class="kpi"><small>Products</small><b>${S.products.length}</b></div><div class="kpi"><small>Stock value (cost)</small><b>${R(val)}</b></div></div>
-  <div class="row" style="margin-bottom:10px"><button class="b" data-a="pnew">${ico('plus')} Add product</button><button class="b alt" data-a="pimport">${ico('upload')} Import</button>${isOwner()?`<button class="b alt" data-a="cats">${ico('tag')} Categories</button>`:''}</div>
+  <div class="row" style="margin-bottom:10px"><button class="b" data-a="pnew">${ico('plus')} Add product</button><button class="b alt" data-a="pimport">${ico('upload')} Import</button><button class="b alt" data-a="cats">${ico('tag')} Categories</button></div>
   ${catChips('cat2')}<input class="search" id="q2" data-in="q2" placeholder="Search stock, category or supplier" value="${esc(S.q2)}">`;
   if(!list.length)return h+'<div class="empty">Nothing here yet.</div>';
-  h+='<section class="card">'+list.map(p=>{const i=info(p);return `<div class="prow st-${i.s}"><div><b>${esc(p.name)}</b><div class="sub">${p.category?'<b>'+esc(p.category)+'</b> · ':''}${R(p.price)} sell · ${R(p.cost)} cost${p.supplier?' · '+esc(p.supplier):''}</div><div class="sub">Reorder at ${i.min}</div>${p.flavours?.length?`<div class="sub">${p.flavourStock?p.flavours.map(name=>esc(name)+' '+num(flavourCount(p,name))).join(' · '):'Edit product to set flavour counts'}${p.flavourStock&&num(p.stock)>p.flavourStock.reduce((n,row)=>n+row.qty,0)?' · Unassigned '+(num(p.stock)-p.flavourStock.reduce((n,row)=>n+row.qty,0)):''}</div>`:''}</div>
-    <div class="right"><span class="chip ${i.s}">${i.s==='ok'?'':LBL[i.s]+' · '}${i.stock}${p.unit?' '+esc(p.unit):''}</span><div class="row"><button class="b alt sm nf" data-a="recv" data-id="${esc(p.id)}">${ico('plus')} Receive</button><button class="b alt sm nf" data-a="pedit" data-id="${esc(p.id)}">Edit</button></div></div></div>`}).join('')+'</section>';
+  h+='<section class="card">'+list.map(p=>{const i=info(p);return `<div class="prow st-${i.s}"><div><b>${esc(p.name)}</b><div class="sub">${p.category?'<b>'+esc(p.category)+'</b> · ':''}${R(p.price)} sell · ${R(p.cost)} cost${p.supplier?' · '+esc(p.supplier):''}</div><div class="sub">Reorder at ${i.min}</div>${p.flavours?.length?`<div class="sub">${p.flavourStock?p.flavours.map(name=>esc(name)+' '+flavourCount(p,name)).join(' · '):'Edit product to set flavour counts'}${p.flavourStock&&num(p.stock)>p.flavourStock.reduce((n,row)=>n+row.qty,0)?' · Unassigned '+(num(p.stock)-p.flavourStock.reduce((n,row)=>n+row.qty,0)):''}</div>`:''}</div>
+    <div class="right"><span class="chip ${i.s}">${i.s==='ok'?'':LBL[i.s]+' · '}${i.stock}${p.unit?' '+esc(p.unit):''}</span><div class="row"><button class="b alt sm nf" data-a="recv" data-id="${p.id}">${ico('plus')} Receive</button><button class="b alt sm nf" data-a="pedit" data-id="${p.id}">Edit</button></div></div></div>`}).join('')+'</section>';
   return h;
 }
 function reorderItems(){
@@ -344,11 +352,11 @@ function reorder(){
   if(!items.length)return '<div class="empty"><span class="bigic">'+ico('check')+'</span>Nothing to reorder right now.<br>Items show up here when they reach their reorder level or will run out within a week.</div>';
   const total=items.reduce((a,x)=>a+x.i.cost,0);
   let h=`<div class="kpis"><div class="kpi"><small>Items to order</small><b>${items.length}</b></div><div class="kpi"><small>Estimated cost</small><b>${R(total)}</b></div></div>`;
-  const groups=Object.create(null);items.forEach(x=>{const k=x.p.supplier||'No supplier set';(groups[k]=groups[k]||[]).push(x)});
+  const groups={};items.forEach(x=>{const k=x.p.supplier||'No supplier set';(groups[k]=groups[k]||[]).push(x)});
   S.groups=Object.keys(groups);
   h+=S.groups.map((k,gi)=>{const g=groups[k];return `<section class="card"><div class="row" style="margin-bottom:6px"><h3 style="margin:0">${esc(k)}</h3><button class="b sm nf" data-a="orderlist" data-g="${gi}">Order list</button></div>`+
     g.map(x=>`<div class="prow st-${x.i.s}"><div><b>${esc(x.p.name)}</b><div class="sub">${x.p.category?esc(x.p.category)+' · ':''}${x.i.stock} left · reorder at ${x.i.min}${x.i.rate>0?' · sells ~'+(Math.round(x.i.rate*10)/10)+'/day':''}${isFinite(x.i.cover)?' · ~'+Math.max(0,Math.floor(x.i.cover))+' days left':''}</div></div>
-    <div class="right"><span class="chip ${x.i.s}">${LBL[x.i.s]}</span><div class="sub">Order <b>${x.i.qty}</b> · ${R(x.i.cost)}</div><button class="b alt sm nf" data-a="recv" data-id="${esc(x.p.id)}" data-qty="${x.i.qty}">Received</button></div></div>`).join('')+'</section>'}).join('');
+    <div class="right"><span class="chip ${x.i.s}">${LBL[x.i.s]}</span><div class="sub">Order <b>${x.i.qty}</b> · ${R(x.i.cost)}</div><button class="b alt sm nf" data-a="recv" data-id="${x.p.id}" data-qty="${x.i.qty}">Received</button></div></div>`).join('')+'</section>'}).join('');
   return h;
 }
 function invoices(){
@@ -356,7 +364,7 @@ function invoices(){
   const list=S.invoices.slice().sort((a,b)=>b.ts-a.ts);
   const owed=list.filter(v=>v.status!=='paid').reduce((a,v)=>a+num(v.total),0);
   return `<div class="kpis"><div class="kpi"><small>Invoices</small><b>${list.length}</b></div><div class="kpi"><small>Unpaid</small><b>${R(owed)}</b></div></div><section class="card">`+
-    list.map(v=>`<div class="prow" data-a="invopen" data-id="${esc(v.id)}" style="cursor:pointer"><div><b>${esc(v.no)}</b><div class="sub">${esc(v.customer&&v.customer.name||'Customer')} · ${dFmt(v.ts)}</div></div><div class="right"><b>${R(v.total)}</b><span class="chip ${v.status==='paid'?'paid':'unpaid'}">${v.status==='paid'?'Paid':'Unpaid'}</span></div></div>`).join('')+'</section>';
+    list.map(v=>`<div class="prow" data-a="invopen" data-id="${v.id}" style="cursor:pointer"><div><b>${esc(v.no)}</b><div class="sub">${esc(v.customer&&v.customer.name||'Customer')} · ${dFmt(v.ts)}</div></div><div class="right"><b>${R(v.total)}</b><span class="chip ${v.status==='paid'?'paid':'unpaid'}">${v.status==='paid'?'Paid':'Unpaid'}</span></div></div>`).join('')+'</section>';
 }
 function report(){
   const now=new Date();const sod=new Date(now.getFullYear(),now.getMonth(),now.getDate()).getTime();
@@ -364,27 +372,27 @@ function report(){
   const sales=S.sales.filter(s=>s.ts>=from).sort((a,b)=>b.ts-a.ts);
   const rev=sales.reduce((a,s)=>a+num(s.total),0);
   const cogs=sales.reduce((a,s)=>a+(s.items||[]).reduce((b,i)=>b+num(i.qty)*num(i.cost),0),0);
-  const top=Object.create(null);sales.forEach(s=>(s.items||[]).forEach(i=>{const t=top[i.pid]||(top[i.pid]={name:i.name,qty:0,rev:0});t.qty+=num(i.qty);t.rev+=lineTotal(i)}));
+  const top={};sales.forEach(s=>(s.items||[]).forEach(i=>{const t=top[i.pid]||(top[i.pid]={name:i.name,qty:0,rev:0});t.qty+=num(i.qty);t.rev+=lineTotal(i)}));
   const tl=Object.values(top).sort((a,b)=>b.rev-a.rev).slice(0,5);
   const chip=(k,l)=>`<button class="${S.range===k?'on':''}" data-a="range" data-r="${k}">${l}</button>`;
   let h=`<div class="chips">${chip('today','Today')}${chip('week','7 days')}${chip('month','30 days')}</div>
   <div class="kpis"><div class="kpi"><small>Sales</small><b>${R(rev)}</b></div><div class="kpi"><small>Est. profit</small><b>${R(rev-cogs)}</b></div><div class="kpi"><small>No. of sales</small><b>${sales.length}</b></div><div class="kpi"><small>Cost of goods</small><b>${R(cogs)}</b></div></div>`;
-  const bc=Object.create(null);sales.forEach(s=>(s.items||[]).forEach(i=>{const k=i.cat||(prod(i.pid)||{}).category||'Uncategorised';const t=bc[k]||(bc[k]={qty:0,rev:0});t.qty+=num(i.qty);t.rev+=lineTotal(i)}));
-  const bp=Object.create(null);sales.forEach(x=>{const k=x.by||'Not recorded';const t=bp[k]||(bp[k]={n:0,rev:0});t.n++;t.rev+=num(x.total)});
+  const bc={};sales.forEach(s=>(s.items||[]).forEach(i=>{const k=i.cat||(prod(i.pid)||{}).category||'Uncategorised';const t=bc[k]||(bc[k]={qty:0,rev:0});t.qty+=num(i.qty);t.rev+=lineTotal(i)}));
+  const bp={};sales.forEach(x=>{const k=x.by||'Not recorded';const t=bp[k]||(bp[k]={n:0,rev:0});t.n++;t.rev+=num(x.total)});
   const pl=Object.entries(bp).sort((a,b)=>b[1].rev-a[1].rev);
   if(pl.length>1||(pl.length===1&&pl[0][0]!=='Not recorded'))h+='<section class="card"><h3>Sales by salesperson</h3>'+pl.map(([k,t])=>`<div class="prow"><div>${esc(k)}<div class="sub">${t.n} sale${t.n===1?'':'s'}</div></div><b>${R(t.rev)}</b></div>`).join('')+'</section>';
   const cl=Object.entries(bc).sort((a,b)=>b[1].rev-a[1].rev);
   if(cl.length>1||(cl.length===1&&cl[0][0]!=='Uncategorised'))h+='<section class="card"><h3>Sales by category</h3>'+cl.map(([k,t])=>`<div class="prow"><div>${esc(k)}<div class="sub">${t.qty} sold</div></div><b>${R(t.rev)}</b></div>`).join('')+'</section>';
   if(tl.length)h+='<section class="card"><h3>Top sellers</h3>'+tl.map(t=>`<div class="prow"><div>${esc(t.name)}<div class="sub">${t.qty} sold</div></div><b>${R(t.rev)}</b></div>`).join('')+'</section>';
-  h+='<section class="card"><h3>Sales</h3>'+(sales.length?sales.slice(0,60).map(s=>{const hasInv=S.invoices.find(v=>v.saleId===s.id);return `<div class="prow"><div><b>${R(s.total)}</b> <span class="sub">· ${esc(s.pay||'')}${s.by?' · by '+esc(s.by):''}</span><div class="sub">${new Date(s.ts).toLocaleString('en-ZA',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}${s.customer?' · '+esc(s.customer):''}</div><div class="sub">${(s.items||[]).map(i=>esc(i.name)+' ×'+num(i.qty)).join(', ')}</div></div>
-    <div class="right">${hasInv?`<button class="b alt sm nf" data-a="invopen" data-id="${esc(hasInv.id)}">${esc(hasInv.no)}</button>`:`<button class="b alt sm nf" data-a="saleinv" data-id="${esc(s.id)}">Invoice</button>`}${isOwner()?`<button class="b red sm nf" data-a="void" data-id="${esc(s.id)}">Void</button>`:''}</div></div>`}).join(''):'<div class="empty">No sales in this period.</div>')+'</section>';
+  h+='<section class="card"><h3>Sales</h3>'+(sales.length?sales.slice(0,60).map(s=>{const hasInv=S.invoices.find(v=>v.saleId===s.id);return `<div class="prow"><div><b>${R(s.total)}</b> <span class="sub">· ${esc(s.pay||'')}${s.by?' · by '+esc(s.by):''}</span><div class="sub">${new Date(s.ts).toLocaleString('en-ZA',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}${s.customer?' · '+esc(s.customer):''}</div><div class="sub">${(s.items||[]).map(i=>esc(i.name)+' ×'+i.qty).join(', ')}</div></div>
+    <div class="right">${hasInv?`<button class="b alt sm nf" data-a="invopen" data-id="${hasInv.id}">${esc(hasInv.no)}</button>`:`<button class="b alt sm nf" data-a="saleinv" data-id="${s.id}">Invoice</button>`}<button class="b red sm nf" data-a="void" data-id="${s.id}">Void</button></div></div>`}).join(''):'<div class="empty">No sales in this period.</div>')+'</section>';
   return h;
 }
 const VIEWS={sell,stock,reorder,invoices,report};
 const TABS=[['sell','cart','Sell'],['stock','box','Stock'],['reorder','truck','Reorder'],['invoices','doc','Invoices'],['report','chart','Report']];
 
 function render(){
-  if(!member||!S.loaded.products){$('#main').innerHTML='<div class="empty">Loading…</div>';drawNav(0);return}
+  if(!S.loaded.products){$('#main').innerHTML='<div class="empty">Loading…</div>';drawNav(0);return}
   derive();
   const f=document.activeElement,main=$('#main');
   const fid=f&&main.contains(f)&&f.tagName==='INPUT'&&f.id?f.id:null;
@@ -404,7 +412,7 @@ function refreshCart(){
 /* ---------- modal ---------- */
 function openModal(h){$('#sheet').innerHTML=h;$('#modal').classList.add('on')}
 function closeModal(){S.cartOpen=false;$('#modal').classList.remove('on');$('#sheet').innerHTML='';drawCartBar()}
-function ask(msg,act,id){openModal(`<h2>Are you sure?</h2><p>${esc(msg)}</p><div class="row"><button class="b red" data-a="${act}" data-id="${esc(id||'')}">Yes</button><button class="b alt" data-a="close">Cancel</button></div>`)}
+function ask(msg,act,id){openModal(`<h2>Are you sure?</h2><p>${esc(msg)}</p><div class="row"><button class="b red" data-a="${act}" data-id="${id||''}">Yes</button><button class="b alt" data-a="close">Cancel</button></div>`)}
 const val=id=>{const e=document.getElementById(id);return e?e.value:''};
 
 /* ---------- invoices & printing ---------- */
@@ -415,7 +423,7 @@ function invBody(v){
   <div class="meta"><div style="font-size:18px;font-weight:700">${v.vatOn?'TAX INVOICE':'INVOICE'}</div><div><b>${esc(v.no)}</b></div><div>${dFmt(v.ts)}</div>${v.by?`<div>Served by: ${esc(v.by)}</div>`:''}<div class="stamp ${v.status==='paid'?'':'u'}">${v.status==='paid'?'PAID':'UNPAID'}</div></div></div>
   ${c.name||c.address||c.phone?`<div><b>Bill to</b><br>${esc(c.name)}<br>${esc(c.address).replace(/\n/g,'<br>')}${c.phone?'<br>'+esc(c.phone):''}</div>`:''}
   <table><tr><th>Description</th><th class="r">Qty</th><th class="r">Unit price</th><th class="r">Amount</th></tr>
-  ${(v.items||[]).map(i=>`<tr><td>${esc(i.name)+discountLabel(i)}</td><td class="r">${num(i.qty)}</td><td class="r">${R(i.price)}</td><td class="r">${R(lineTotal(i))}</td></tr>`).join('')}</table>
+  ${(v.items||[]).map(i=>`<tr><td>${esc(i.name)+discountLabel(i)}</td><td class="r">${i.qty}</td><td class="r">${R(i.price)}</td><td class="r">${R(lineTotal(i))}</td></tr>`).join('')}</table>
   <div class="totals">${v.vatOn?`<div><span>Subtotal (excl. VAT)</span><span>${R(subt)}</span></div><div><span>VAT 15%</span><span>${R(vat)}</span></div>`:''}<div class="g"><span>Total${v.vatOn?' (incl. VAT)':''}</span><span>${R(v.total)}</span></div></div>
   ${b.bank?`<div class="foot"><b>Banking details</b>\n${esc(b.bank)}</div>`:''}<div class="foot">${esc(b.footer)}</div></div>`;
 }
@@ -528,17 +536,17 @@ async function copyText(t){
   try{await navigator.clipboard.writeText(t);toast('Copied')}
   catch(e){openModal(`<h2>Copy text</h2><textarea rows="12" id="ct">${esc(t)}</textarea><div class="row" style="margin-top:10px"><button class="b alt" data-a="close">Close</button></div>`);const e2=document.getElementById('ct');if(e2){e2.focus();e2.select()}}
 }
-async function makeInvoice(items,total,pay,cust,saleId){
+async function makeInvoice(items,total,pay,cust,saleId,by){
   const s=st();const n=num(s.nextInv)||1;
   const inv={no:'INV-'+String(n).padStart(4,'0'),ts:Date.now(),customer:{name:cust.name||'',phone:cust.phone||'',address:cust.address||''},items,total,
-    vatOn:!!s.vatOn,status:pay==='On account'?'unpaid':'paid',saleId:saleId||'',by:member.name,actorId:member.id,
+    vatOn:!!s.vatOn,status:pay==='On account'?'unpaid':'paid',saleId:saleId||'',by:by||'',
     biz:{name:s.name,address:s.address,phone:s.phone,email:s.email,vatNo:s.vatNo,bank:s.bank,footer:s.footer}};
   const id=newId();await put('invoices',id,inv);
-  await saveSettings({...S.settings,nextInv:n+1});
+  await saveSettings(Object.assign({},s,{nextInv:n+1}));
   return Object.assign({id},inv);
 }
 async function saveSettings(o){
-  S.settings=o
+  if(DB)await DB.doc('shop/settings').set(o);else{S.settings=o;persist()}
 }
 function showDoc(o){
   S.doc=o;const el=$('#docview');
@@ -552,7 +560,7 @@ function closeDoc(){const el=$('#docview');el.classList.remove('on');el.innerHTM
 function showInvoice(v){
   showDoc({title:v.no,chip:`<span class="chip ${v.status==='paid'?'paid':'unpaid'}">${v.status==='paid'?'Paid':'Unpaid'}</span>`,body:invBody(v),text:invText(v),
     pdfName:v.no+'.pdf',pdf:()=>buildPdf(invPdfData(v)),
-    more:`<button class="b alt" data-a="invpaid" data-id="${esc(v.id)}">${v.status==='paid'?'Mark unpaid':'Mark paid'}</button>${isOwner()?`<button class="b red" data-a="invdel" data-id="${esc(v.id)}">Delete</button>`:''}`});
+    more:`<button class="b alt" data-a="invpaid" data-id="${v.id}">${v.status==='paid'?'Mark unpaid':'Mark paid'}</button><button class="b red" data-a="invdel" data-id="${v.id}">Delete</button>`});
 }
 
 /* ---------- product forms ---------- */
@@ -566,18 +574,18 @@ function prodForm(p){
   <div id="f_flavour_counts">${countFields((p.flavours||[]).map(name=>({name,qty:p.flavourStock?flavourCount(p,name):''})))}</div>
   <p class="sub" id="f_flavour_help" ${p.flavours?.length?'':'hidden'}>Enter the count for each flavour. Their sum becomes the total stock.</p>
   <label for="f_pair">Take Two total price (R)</label><input id="f_pair" type="number" min="0.01" step="0.01" placeholder="Leave blank for no special" value="${esc(p.pairPrice??'')}">
-  <div class="two"><div><label>Selling price (R)</label><input id="f_price" type="number" inputmode="decimal" step="0.01" value="${esc(p.price!=null?p.price:'')}"></div>
-  <div><label>Cost price (R)</label><input id="f_cost" type="number" inputmode="decimal" step="0.01" value="${esc(p.cost!=null?p.cost:'')}"></div></div>
-  <div class="two"><div id="f_stock_group" ${p.flavours?.length?'hidden':''}><label>In stock now</label><input id="f_stock" type="number" inputmode="decimal" value="${esc(p.stock!=null?p.stock:'')}"></div>
-  <div><label>Reorder when stock reaches</label><input id="f_min" type="number" inputmode="decimal" value="${esc(p.min!=null?p.min:'')}"></div></div>
+  <div class="two"><div><label>Selling price (R)</label><input id="f_price" type="number" inputmode="decimal" step="0.01" value="${p.price!=null?p.price:''}"></div>
+  <div><label>Cost price (R)</label><input id="f_cost" type="number" inputmode="decimal" step="0.01" value="${p.cost!=null?p.cost:''}"></div></div>
+  <div class="two"><div id="f_stock_group" ${p.flavours?.length?'hidden':''}><label>In stock now</label><input id="f_stock" type="number" inputmode="decimal" value="${p.stock!=null?p.stock:''}"></div>
+  <div><label>Reorder when stock reaches</label><input id="f_min" type="number" inputmode="decimal" value="${p.min!=null?p.min:''}"></div></div>
   <div class="two"><div><label>Unit (e.g. each, box, kg)</label><input id="f_unit" value="${esc(p.unit)}"></div>
-  <div><label>Order in packs of</label><input id="f_pack" type="number" inputmode="decimal" placeholder="1" value="${esc(p.pack||'')}"></div></div>
+  <div><label>Order in packs of</label><input id="f_pack" type="number" inputmode="decimal" placeholder="1" value="${p.pack||''}"></div></div>
   <label>Supplier</label><input id="f_supplier" value="${esc(p.supplier)}">
-  <div class="row" style="margin-top:14px"><button class="b" data-a="psave" data-id="${esc(p.id||'')}">Save</button>${p.id&&isOwner()?`<button class="b red nf" data-a="pdelask" data-id="${esc(p.id)}">Delete</button>`:''}<button class="b alt nf" data-a="close">Cancel</button></div>`;
+  <div class="row" style="margin-top:14px"><button class="b" data-a="psave" data-id="${p.id||''}">Save</button>${p.id?`<button class="b red nf" data-a="pdelask" data-id="${p.id}">Delete</button>`:''}<button class="b alt nf" data-a="close">Cancel</button></div>`;
 }
 function settingsForm(){
   const s=st();
-  return `<h2>Shop settings</h2><button class="b alt" data-a="team">Manage team</button><p class="sub">These details print on your invoices.</p>
+  return `<h2>Shop settings</h2><p class="sub">These details print on your invoices.</p>
   <label>Business name</label><input id="s_name" value="${esc(s.name)}">
   <label>Address</label><textarea id="s_address" rows="2">${esc(s.address)}</textarea>
   <div class="two"><div><label>Phone</label><input id="s_phone" value="${esc(s.phone)}"></div><div><label>Email</label><input id="s_email" value="${esc(s.email)}"></div></div>
@@ -585,10 +593,10 @@ function settingsForm(){
   <label>VAT number</label><input id="s_vatNo" value="${esc(s.vatNo)}">
   <label>Banking details (shown on invoices)</label><textarea id="s_bank" rows="3">${esc(s.bank)}</textarea>
   <label>Invoice footer note</label><input id="s_footer" value="${esc(s.footer)}">
-  <label>Order enough stock to last (days)</label><input id="s_cover" type="number" inputmode="numeric" value="${esc(s.cover)}">
-  ${revision===0&&readTabletData()?'<div class="row"><button class="b" data-a="transferLocal">Move this device’s records online</button></div>':''}
+  <label>Salespeople (one name per line)</label><textarea id="s_staff" rows="3" placeholder="Xalinda">${esc(staffList().join('\n'))}</textarea>
+  <label>Order enough stock to last (days)</label><input id="s_cover" type="number" inputmode="numeric" value="${s.cover}">
   <label>Data backup</label><div class="row"><button class="b alt" data-a="backup">${ico('upload')} Back up data</button><label class="b alt" style="margin:0;cursor:pointer">${ico('plus')} Restore<input id="restore_file" type="file" accept=".json,application/json" hidden></label></div>
-  <p class="sub">Restoring a backup replaces the records shared by all devices.</p>
+  <p class="sub">Your data is saved in this browser on this device. Back it up regularly, and before clearing browser data.</p>
   <div class="row" style="margin-top:14px"><button class="b" data-a="ssave">Save</button><button class="b alt nf" data-a="close">Cancel</button></div>`;
 }
 
@@ -633,9 +641,9 @@ const A={
     const p=prod(d.id);if(!p)return;
     openModal(`<h2>Receive stock</h2><p><b>${esc(p.name)}</b> – now ${num(p.stock)} in stock</p>
     ${p.flavours?.length?`<label for="r_flavour">Flavour</label><select id="r_flavour">${p.flavours.map(name=>`<option>${esc(name)}</option>`).join('')}</select>`:''}
-    <label>Quantity received</label><input id="r_qty" type="number" inputmode="decimal" value="${esc(d.qty||'')}">
+    <label>Quantity received</label><input id="r_qty" type="number" inputmode="decimal" value="${d.qty||''}">
     <label>New cost per unit (optional)</label><input id="r_cost" type="number" inputmode="decimal" step="0.01" placeholder="${num(p.cost)}">
-    <div class="row" style="margin-top:14px"><button class="b" data-a="recvsave" data-id="${esc(p.id)}">Add to stock</button><button class="b alt nf" data-a="close">Cancel</button></div>`);
+    <div class="row" style="margin-top:14px"><button class="b" data-a="recvsave" data-id="${p.id}">Add to stock</button><button class="b alt nf" data-a="close">Cancel</button></div>`);
   },
   async recvsave(d){
     const p=prod(d.id),q=num(val('r_qty'));if(!p||q<=0){toast('Enter a quantity');return}
@@ -681,19 +689,18 @@ const A={
   async catadd(){
     const n=val('c_new').trim();if(!n){toast('Type a category name');return}
     const cs=(st().cats||[]);if(!catList().some(c=>c.toLowerCase()===n.toLowerCase())){await saveSettings(Object.assign({},st(),{cats:cs.concat(n)}))}
-    afterSave=()=>{toast('Added '+n);A.cats()};
+    toast('Added '+n);setTimeout(()=>A.cats(),400);
   },
   async catdel(d){
     const used=S.products.filter(p=>p.category===d.c).length;
     if(used){toast('Still used by '+used+' product(s) – change those first');return}
     await saveSettings(Object.assign({},st(),{cats:(st().cats||[]).filter(c=>c!==d.c)}));
-    afterSave=()=>A.cats();
+    setTimeout(()=>A.cats(),400);
   },
   async saleinv(d){
     const s=S.sales.find(x=>x.id===d.id);if(!s)return;
-    const existing=S.invoices.find(v=>v.saleId===s.id);if(existing){showInvoice(existing);return}
-    const v=await makeInvoice(s.items,s.total,s.pay,{},s.id);
-    afterSave=()=>showInvoice(v);
+    const v=await makeInvoice(s.items,s.total,s.pay,{},s.id,s.by||'');
+    showInvoice(v);render();
   },
   settings(){openModal(settingsForm())},
   backup(){
@@ -701,7 +708,7 @@ const A={
     const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download='garden-route-green-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);toast('Backup saved to your downloads');
   },
   async ssave(){
-    const o=Object.assign({},st(),{name:val('s_name').trim()||DEF.name,address:val('s_address'),phone:val('s_phone'),email:val('s_email'),vatOn:document.getElementById('s_vatOn').checked,vatNo:val('s_vatNo'),bank:val('s_bank'),footer:val('s_footer'),cover:Math.max(1,num(val('s_cover'))||14)});
+    const o=Object.assign({},st(),{name:val('s_name').trim()||DEF.name,address:val('s_address'),phone:val('s_phone'),email:val('s_email'),vatOn:document.getElementById('s_vatOn').checked,vatNo:val('s_vatNo'),bank:val('s_bank'),footer:val('s_footer'),staff:val('s_staff').split(/\n/).map(x=>x.trim()).filter(Boolean),cover:Math.max(1,num(val('s_cover'))||14)});
     await saveSettings(o);closeModal();toast('Settings saved');render();
   }
 };
@@ -727,38 +734,30 @@ async function doCheckout(withInv){
     const items=lines.map(c=>{const p=prod(c.pid);return{pid:c.pid,name:c.flavour?p.name+' · '+c.flavour:p.name,flavour:c.flavour,cat:p.category||'',unit:p.unit||'',qty:num(c.qty),price:num(c.price),discount:cartDiscount(c),cost:num(p.cost)}});
     const total=items.reduce((a,i)=>a+lineTotal(i),0);
     const saleId=newId();
-    await put('sales',saleId,{ts:Date.now(),items,total,pay:S.pay,customer:S.cust.name.trim(),by:member.name,actorId:member.id});
+    await put('sales',saleId,{ts:Date.now(),items,total,pay:S.pay,customer:S.cust.name.trim(),by:S.by.trim()});
     for(const i of items){const p=prod(i.pid);if(p)await upd('products',p.id,stockPatch(p,i.flavour,-i.qty))}
     let inv=null;
-    if(withInv)inv=await makeInvoice(items,total,S.pay,S.cust,saleId);
-    afterSave=()=>{
-      S.cart=[];S.cust={name:'',phone:'',address:''};
-      closeModal();
-      if(inv)showInvoice(inv);else toast('Sale complete – '+R(total));
-    };
-  }finally{S.busy=false}
+    if(withInv)inv=await makeInvoice(items,total,S.pay,S.cust,saleId,S.by.trim());
+    S.cart=[];S.cust={name:'',phone:'',address:''};
+    closeModal();render();
+    if(inv)showInvoice(inv);else toast('Sale complete – '+R(total));
+  }catch(e){toast('Something went wrong – please try again')}
+  S.busy=false;
 }
 
 document.addEventListener('click',e=>{
-  if(saving||pendingSave&&e.target.id==='modal')return;
   if(e.target.id==='modal'){closeModal();return}
-  const b=e.target.closest('[data-a]');if(!b||!member||saving||refreshing)return;
-  const action=b.dataset.a,f=A[action];if(!Object.hasOwn(A,action))return;
-  if(OWNER_ACTIONS.has(action)&&!isOwner())return;
-  if(pendingSave&&action!=='retrySave')return;
-  const work=()=>f(b.dataset);
-  if(WRITES.has(action))saveChange(work);
-  else Promise.resolve().then(work).catch(e=>toast(e.message||'Unable to complete this action'));
-
+  const b=e.target.closest('[data-a]');if(!b)return;
+  const f=A[b.dataset.a];if(!f)return;
+  Promise.resolve().then(()=>f(b.dataset)).catch(()=>toast('Something went wrong – please try again'));
 });
 document.addEventListener('change',e=>{
-  const file=e.target.files?.[0];
-  if(e.target.id!=='restore_file'||!file||!isOwner()||saving)return;
-  e.target.value='';
-  restoreFile(file);
+  if(e.target.id!=='restore_file'||!e.target.files[0])return;
+  const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d.products))throw 0;S.products=d.products;S.sales=d.sales||[];S.invoices=d.invoices||[];S.settings=d.settings||{};persist();closeModal();render();toast('Backup restored')}catch(x){toast('That file is not a Garden Route Green backup')}};
+  r.readAsText(e.target.files[0]);
 });
 document.addEventListener('input',e=>{
-  if(saving||pendingSave)return;
   const t=e.target;
   if(t.id==='f_flavours'){
     const previous=new Map([...$('#f_flavour_counts').querySelectorAll('input')].map(input=>[input.dataset.flavourCount,input.value]));
@@ -773,242 +772,16 @@ document.addEventListener('input',e=>{
   else if(k==='q2'){S.q2=t.value;render()}
   else if(k==='cqty'||k==='cprice'){const c=S.cart.find(x=>x.id===t.dataset.id);if(c){if(k==='cqty')c.qty=num(t.value);else c.price=num(t.value);refreshCart()}}
   else if(k==='pay'){S.pay=t.value}
-  else if(['cust_name','cust_phone','cust_address'].includes(k)){S.cust[k.slice(5)]=t.value}
+  else if(k==='by'){S.by=t.value}
+  else if(k.indexOf('cust_')===0){S.cust[k.slice(5)]=t.value}
 });
 
-const OWNER_ACTIONS=new Set(['transferLocal','settings','team','approve','revoke','backup','ssave','cats','catadd','catdel','pdelask','pdel','invdel','invdelgo','void','voidgo']);
-const WRITES=new Set(['checkout','checkoutinv','psave','pdel','recvsave','pimportgo','invpaid','invdelgo','catadd','catdel','saleinv','ssave','voidgo']);
-const brand='<div class="brand"><span class="logo">'+ico('leaf')+'</span><div><h1>Garden Route Green</h1><small>Sales, stock and invoices</small></div></div>';
-let sessionUser, afterSave;
-
-function header(){
-  $('#hdr').innerHTML=brand+(member?`<div class="right"><small>${esc(member.name)} · ${isOwner()?'Owner':'Staff'}</small><div class="row">${pendingSave?'<button class="b sm nf" data-a="retrySave">Retry save</button>':''}${isOwner()?'<button class="b alt sm nf" data-a="settings">Settings</button>':''}<button class="b alt sm nf" data-a="logout">Sign out</button></div></div>`:'');
-}
-
-function lockShop(message=''){
-  member=null;
-  revision=null;
-  pendingSave=null;
-  afterSave=null;
-  Object.assign(S,{products:[],sales:[],invoices:[],settings:{},cart:[],tab:'sell',q:'',q2:'',cat:'',cat2:'',pay:'Cash',cust:{name:'',phone:'',address:''},loaded:{},rate:{},groups:[],order:null});
-  $('#printarea').replaceChildren();
-  $('#nav').replaceChildren();
-  $('#cartbar').replaceChildren();
-  closeModal();
-  closeDoc();
-  header();
-  note(message);
-  $('#main').innerHTML=DB?`<form id="signin" class="card" style="max-width:420px;margin:24px auto">
-    <h2>Sign in to your shop</h2>
-    <label for="login_email">Email</label><input type="email" id="login_email" autocomplete="username" required>
-    <label for="login_password">Password</label><input type="password" id="login_password" autocomplete="current-password" required>
-    <button class="b" style="margin-top:14px">Sign in</button>
-    </form>`:'<div class="empty">Ask your shop owner to finish connecting the shared database.</div>';
-}
-
-async function refreshShop(){
-  if(!sessionUser||saving||refreshing||pendingSave)return;
-  const user=sessionUser;
-  refreshing=true;
-  try{
-    const data=await rpc('grg_read',{known_revision:revision});
-    if(sessionUser!==user)return;
-    const changed=!member||data.revision!==revision||data.name!==member.name;
-    member={id:user.id,name:data.name,role:data.role};
-    revision=data.revision;
-    if(data.snapshot)Object.assign(S,data.snapshot);
-    S.loaded={products:1,sales:1,invoices:1};
-    header();
-    note('');
-    if(changed)render();
-    if(changed&&isOwner()&&revision===0&&readTabletData()){
-      note('Your saved records were found on this device. Open Settings and tap Move this device’s records online.');
-    }
-  }catch(e){
-    if(sessionUser!==user)return;
-    if(e.code==='42501'){
-      sessionUser=null;
-      await DB.auth.signOut({scope:'local'});
-      lockShop('Ask the owner to approve your account.');
-    }else{
-      note('Could not connect to the shop. Reconnecting…');
-    }
-  }finally{refreshing=false}
-}
-
-async function commitSave(){
-  const save=pendingSave;
-  const {args,snapshot,done}=save;
-  let result;
-  try{
-    result=await rpc('grg_save',args);
-  }catch(e){
-    if(pendingSave!==save)return;
-    if(!e.code||e.code==='PGRST000'||e.code==='PGRST001'||e.code==='PGRST002'){
-      closeModal();
-      closeDoc();
-      note('The save could not be confirmed. Use Retry save to check or finish it.');
-      return;
-    }
-    pendingSave=null;
-    closeModal();
-    closeDoc();
-    toast(e.code==='40001'?'Another device saved a change. Review the updated records and try again.':e.message||'Unable to save');
-    revision=null;
-    return;
-  }
-  if(pendingSave!==save)return;
-  pendingSave=null;
-  revision=result;
-  Object.assign(S,snapshot);
-  note('');
-  done?.();
-  render();
-}
-async function saveChange(work,restore=false){
-  if(saving||refreshing||pendingSave||!member)return;
-  saving=true;
-  const actor=sessionUser;
-  const previous=structuredClone(records());
-  try{
-    afterSave=null;
-    await work();
-    if(sessionUser!==actor)return;
-    const snapshot=records();
-    Object.assign(S,previous);
-    if(JSON.stringify(snapshot)===JSON.stringify(previous)){afterSave?.();return}
-    pendingSave={snapshot,done:afterSave,args:{expected_revision:revision,next_snapshot:snapshot,operation_id:crypto.randomUUID(),restore_backup:restore}};
-    await commitSave();
-  }catch(e){
-    if(sessionUser!==actor)return;
-    Object.assign(S,previous);
-    render();
-    toast(e.message||'Unable to save');
-  }finally{
-    afterSave=null;
-    saving=false;
-    header();
-    if(revision===null&&!pendingSave)refreshShop();
-  }
-}
-A.retrySave=async()=>{
-  if(!pendingSave)return;
-  saving=true;
-  try{await commitSave()}
-  finally{
-    saving=false;
-    header();
-    if(revision===null)refreshShop();
-  }
-};
-A.logout=async()=>{
-  if(pendingSave){toast('Confirm the pending save before signing out.');return}
-  const {error}=await DB.auth.signOut({scope:'local'});
-  if(error)throw error;
-  sessionUser=null;
-  lockShop();
-};
-A.team=async()=>{
-  const people=await rpc('grg_team');
-  if(!isOwner())return;
-  openModal(`<h2>Team access</h2><p class="sub">Create each employee’s email login in Supabase first. Approve it here to give them access to daily shop operations.</p>
-  ${people.map(p=>`<div class="prow"><div><b>${esc(p.name)}</b><div class="sub">${esc(p.email)}</div></div><button class="b alt sm nf" data-a="revoke" data-email="${esc(p.email)}">Remove access</button></div>`).join('')}
-  <label for="team_email">Employee email</label><input id="team_email" type="email">
-  <label for="team_name">Display name</label><input id="team_name">
-  <div class="row" style="margin-top:14px"><button class="b" data-a="approve">Approve access</button><button class="b alt" data-a="settings">Back</button></div>`);
-};
-A.approve=async()=>{
-  const email=val('team_email').trim(), name=val('team_name').trim();
-  if(!email||!name){toast('Enter the employee email and display name');return}
-  await rpc('grg_staff',{login_email:email,staff_name:name,allow_access:true});
-  await A.team();
-};
-A.revoke=async(d)=>{
-  if(!confirm('Remove shop access for '+d.email+'?'))return;
-  await rpc('grg_staff',{login_email:d.email,staff_name:'',allow_access:false});
-  await A.team();
-};
-
-function readTabletData(){
-  try{
-    const data=JSON.parse(localStorage.getItem('garden-route-green-data')||'null');
-    return data&&(data.products?.length||data.sales?.length||data.invoices?.length)?data:null;
-  }catch(e){return null}
-}
-A.transferLocal=async()=>{
-  const data=readTabletData();
-  if(!isOwner()||revision!==0||!data)return;
-  if(!confirm('Move the saved products, sales and invoices from this device into the shared shop?'))return;
-  await restoreRecords(data,true);
-};
-async function restoreFile(file){
-  try{await restoreRecords(JSON.parse(await file.text()),false)}
-  catch(e){toast('Choose a valid Garden Route Green backup')}
-}
-async function restoreRecords(data,fromTablet){
-    if(!['products','sales','invoices'].every(k=>Array.isArray(data[k])&&data[k].every(row=>row&&typeof row.id==='string'))||
-      !data.settings||typeof data.settings!=='object'||Array.isArray(data.settings))throw new Error();
-    if(!isOwner()||(fromTablet?revision!==0:!confirm('Replace shared shop records with this backup?')))return;
-    const nextInvoice=data.invoices.reduce((next,invoice)=>{
-      const match=/^INV-(\d+)$/.exec(invoice.no);
-      return match?Math.max(next,Number(match[1])+1):next;
-    },Math.max(1,Number(data.settings.nextInv)||1));
-    if(!Number.isSafeInteger(nextInvoice))throw new Error();
-    data.settings.nextInv=nextInvoice;
-    await saveChange(()=>{
-      Object.assign(S,{products:data.products,sales:data.sales,invoices:data.invoices,settings:data.settings});
-      afterSave=()=>{S.cart=[];closeModal();closeDoc();toast(fromTablet?'Records moved online':'Backup restored')};
-    },true);
-}
-document.addEventListener('submit',async e=>{
-  if(e.target.id!=='signin')return;
-  e.preventDefault();
-  const form=e.target, button=form.querySelector('button');
-  button.disabled=true;
-  try{
-    const {data,error}=await DB.auth.signInWithPassword({email:val('login_email').trim(),password:val('login_password')});
-    form.reset();
-    if(error){note('Sign-in failed. Check your email and password.');return}
-    sessionUser=data.user;
-    await refreshShop();
-  }catch(e){note('Unable to sign in. Check your connection and try again.')}
-  finally{button.disabled=false}
-});
-document.addEventListener('DOMContentLoaded',async()=>{
-  const config=window.GRG_CONFIG;
-  if(!config?.url||!config.publishableKey||!window.supabase){lockShop();return}
-  DB=window.supabase.createClient(config.url,config.publishableKey);
-  lockShop();
-  DB.auth.onAuthStateChange((event,session)=>{
-    if(event==='SIGNED_OUT'){
-      sessionUser=null;
-      lockShop();
-    }else if(event==='SIGNED_IN'&&sessionUser&&session?.user.id!==sessionUser.id){
-      sessionUser=session.user;
-      lockShop();
-      setTimeout(refreshShop,0);
-    }
-  });
-  const {data}=await DB.auth.getSession();
-  sessionUser=data.session?.user;
-  refreshShop();
-  setInterval(()=>{
-    if(!$('#modal').classList.contains('on')&&!S.doc)refreshShop();
-    else if(member&&!saving&&!pendingSave)checkAccess();
-  },5000);
-});
-async function checkAccess(){
-  const user=sessionUser;
-  try{await rpc('grg_read',{known_revision:revision})}
-  catch(e){
-    if(e.code==='42501'&&sessionUser===user){
-      sessionUser=null;
-      await DB.auth.signOut({scope:'local'});
-      lockShop('Ask the owner to approve your account.');
-    }
-  }
-}
-
+/* ---------- start ---------- */
+$('#hdr').innerHTML=`<div class="brand"><span class="logo">${ico('leaf')}</span><div><h1>Garden Route Green</h1><small>Sales, stock and invoices</small></div></div><button class="iconbtn" data-a="settings" aria-label="Settings">${ico('sliders')}</button>`;
+render();
+loadLocal();
+S.loaded={products:1,sales:1,invoices:1};
+render();
 </script>
 </body>
 </html>
